@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Playlist, SpotifyUser, Track } from "types/playlist";
 import { server } from "config/index";
 import { layout, playlistButton, listContainer, playlistImage, playlistName } from "../styles/app.css";
-import { convertTrackToId } from "../src/util/track";
+import { convertTrackToId } from "util/track";
 
 interface Token {
   access_token: string;
@@ -65,7 +65,7 @@ const Callback: NextPage = () => {
       data = res.data;
       setTracks(oldTracks => {
         const newTracks = [...oldTracks];
-        newTracks.push(...data.items.map((t: { track: Track }) => t.track));
+        newTracks.push(...data.items.map((t: { track: Track }) => t.track).filter(track => !track.is_local));
         items = newTracks;
         return newTracks;
       });
@@ -79,14 +79,14 @@ const Callback: NextPage = () => {
           getSong(track).then(res => {
             setWords(oldWords => {
               const newWords = { ...oldWords };
-              newWords[convertTrackToId(track)] = res;
+              newWords[convertTrackToId(track)] = res.lyrics;
               return newWords;
             })
           })
         }
       })
   }
-
+  console.log(words);
   const getSong = async (s: Track) => {
     const response = await fetch(`${server}/api/fetchLyrics?${new URLSearchParams({ name: s.name, artist: s.artists[0].name })}`);
 
@@ -97,6 +97,7 @@ const Callback: NextPage = () => {
     return res;
   };
 
+  const [selectedTrack, setSelectedTrack] = useState<Track>();
   return <div className={layout} >
     <div>
       <div>
@@ -121,13 +122,25 @@ const Callback: NextPage = () => {
       {tracks.map((t, i) => {
         const imgSrc = t.album.images[0]?.url;
         const name = t.name;
-        return <button key={i} className={playlistButton}>
+        return <button key={i} className={playlistButton} onClick={() => setSelectedTrack(t)}>
           <img src={imgSrc} className={playlistImage} />
           <div className={playlistName}>{name}</div>
         </button>
       })}
     </div>
     <div className={listContainer}>
+      <div></div>
+      {selectedTrack && words[convertTrackToId(selectedTrack)]
+        ? <div>
+          {Object.entries(words[convertTrackToId(selectedTrack)])
+            .map(v =>
+              <div>
+                {v[0]}: {v[1]}
+              </div>)
+          }
+        </div>
+        : null
+      }
     </div>
   </div>
 }
