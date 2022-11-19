@@ -1,4 +1,3 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next'
 import axios from 'axios';
 import cheerio, { CheerioAPI } from 'cheerio';
@@ -84,7 +83,15 @@ export default async function (
       });
 
       const song = hitSong.data.response.song;
-      const songRelationships: { relationship_type: string; songs: { language: string; url: string }[] }[] = song.song_relationships;
+      const songRelationships: {
+        relationship_type: string;
+        songs: {
+          language: string;
+          url: string;
+          title: string;
+          primary_artist: { name: string }
+        }[]
+      }[] = song.song_relationships;
       const translationOf = songRelationships.find(el => el.relationship_type === "translation_of");
       console.log(`${songName} by ${songArtist}: ${song.title}: Result with title`);
       hitSongName = song.title;
@@ -95,7 +102,11 @@ export default async function (
       if (translationOf && translationOf.songs.length > 0) {
         // If it is, then make sure the other song is in English
         const originalSong = translationOf.songs[0];
-        if (originalSong.language === "en") songUrl = originalSong.url;
+        if (originalSong.language === "en") {
+          hitSongName = originalSong.title;
+          hitSongArtist = originalSong.primary_artist.name;
+          songUrl = originalSong.url;
+        }
       }
       else {
         // Otherwise, make sure our own song is in English
@@ -152,8 +163,8 @@ export default async function (
 
     // Save resulting object to db
     try {
-      if (hitSongArtist.toLocaleLowerCase().trim() !== songArtist.toLocaleLowerCase().trim()
-        && hitSongName.toLocaleLowerCase().trim() !== songName.toLocaleLowerCase().trim()) {
+      if (hitSongArtist.toLocaleLowerCase().replaceAll(" ", "") !== songArtist.toLocaleLowerCase().replaceAll(" ", "")
+        && hitSongName.toLocaleLowerCase().replaceAll(" ", "") !== songName.toLocaleLowerCase().replaceAll(" ", "")) {
         console.log(`${songName} by ${songArtist}: ${hitSongName} by ${hitSongArtist}: Mismatch`);
         const warningRef = doc(db, "warnings", today);
         await getDoc(warningRef).then(d => {
