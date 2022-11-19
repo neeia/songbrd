@@ -53,6 +53,7 @@ const Callback: NextPage = () => {
   const getSongs = async (s: string) => {
     let data: { items: any[]; next: string | null; };
     let items: Track[] = [];
+    setTracks([]);
     do {
       const res = await axios.get(s, {
         headers: {
