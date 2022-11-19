@@ -3,8 +3,8 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import axios from 'axios';
 import cheerio, { CheerioAPI } from 'cheerio';
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { addDoc, doc, getDoc, getFirestore, setDoc, updateDoc } from 'firebase/firestore';
-import { convertNameAndArtistToId } from '../../src/util/track';
+import { doc, getDoc, getFirestore, setDoc, updateDoc } from 'firebase/firestore';
+import { convertNameAndArtistToId } from 'util/track';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCQ0mcy2XyM6hJITjsGOjTbtUrIg_VIRRg",
@@ -36,6 +36,7 @@ export default async function (
   if (!getApps().length) initializeApp(firebaseConfig);
   let app = getApp();
   const db = getFirestore(app);
+  const today = new Date().toISOString().slice(0, 10)
   try {
     const q = req.query as Request;
     const songArtist = q.artist;
@@ -103,7 +104,13 @@ export default async function (
     // If we've gone through the entire array without hitting a good url, then give up
     if (!songUrl) {
       console.log(`${songName} by ${songArtist}: No good url!`);
-      // TODO: Log the failure in firebase
+      const failureRef = doc(db, "failure", today);
+      await getDoc(failureRef).then(d => {
+        if (!d.exists()) {
+          setDoc(failureRef, { date: today }, { merge: true });
+        }
+        updateDoc(failureRef, songArtist, songName);
+      })
       return res.status(204);
     }
 
@@ -140,19 +147,31 @@ export default async function (
 
     // Save resulting object to db
     try {
-      console.log(`${songName} by ${songArtist}: Saving to Log`);
-      setDoc(docRef, words);
+      if (hitSongArtist !== songArtist && hitSongName !== songName) {
+        console.log(`${songName} by ${songArtist}: ${hitSongName} by ${hitSongArtist}: Mismatch`);
+        const warningRef = doc(db, "warnings", today);
+        await getDoc(warningRef).then(d => {
+          if (!d.exists()) {
+            setDoc(warningRef, { date: today }, { merge: true });
+          }
+          updateDoc(warningRef,
+            convertNameAndArtistToId(songName.replace("/", ""), songArtist.replace("/", "")),
+            convertNameAndArtistToId(hitSongName.replace("/", ""), hitSongArtist.replace("/", "")));
+        })
+      } else {
+        console.log(`${songName} by ${songArtist}: Saving to Log`);
+        setDoc(docRef, words);
 
-      const today = new Date().toISOString().slice(0, 10)
-      const logRef = doc(db, "logs", today);
-      await getDoc(logRef).then(doc => {
-        if (!doc.exists()) {
-          setDoc(logRef, { date: today }, { merge: true });
-        }
-        updateDoc(logRef,
-          convertNameAndArtistToId(songName.replace("/", ""), songArtist.replace("/", "")),
-          convertNameAndArtistToId(hitSongName.replace("/", ""), hitSongArtist.replace("/", "")));
-      })
+        const logRef = doc(db, "logs", today);
+        await getDoc(logRef).then(d => {
+          if (!d.exists()) {
+            setDoc(logRef, { date: today }, { merge: true });
+          }
+          updateDoc(logRef,
+            convertNameAndArtistToId(songName.replace("/", ""), songArtist.replace("/", "")),
+            convertNameAndArtistToId(hitSongName.replace("/", ""), hitSongArtist.replace("/", "")));
+        })
+      }
     } catch (e) {
       console.error("Error adding document: ", e);
     }
