@@ -21,6 +21,9 @@ function htmlDecodeWithLineBreaks($: CheerioAPI, html: string) {
   return $('<div>').html(lineBreakedHtml).text().replace(new RegExp(breakToken, 'g'), '\n');
 }
 
+function fbClean(s: string) {
+  return s.replaceAll("/", "").replaceAll(".", "");
+}
 type Data = {
   lyrics: Record<string, number>;
 }
@@ -40,17 +43,19 @@ export default async function (
   try {
     const q = req.query as Request;
     const songArtist = q.artist;
+    const cleanSongArtist = fbClean(songArtist);
     const songName = q.name
       .split("(Feat", 1)[0]
       .split("(feat", 1)[0]
       .split("- From", 1)[0]
       .split("- from", 1)[0]
       .split("(From", 1)[0]
-      .split("(from", 1)[0];
-    console.log(`${songName} by ${songArtist}: Received Song`);
+      .split("(from", 1)[0]
+      .split("- Bonus Track", 1)[0];
+    const cleanSongName = fbClean(songName);
 
     // Check if song is already indexed in db
-    const docRef = doc(db, "artists", songArtist.replace("/", ""), "songs", songName.replace("/", ""));
+    const docRef = doc(db, "artists", cleanSongArtist, "songs", cleanSongName);
     const checkDoc = await getDoc(docRef)
     if (checkDoc.exists()) {
       return res.status(200).json({ lyrics: checkDoc.data() })
@@ -147,7 +152,8 @@ export default async function (
 
     // Save resulting object to db
     try {
-      if (hitSongArtist !== songArtist && hitSongName !== songName) {
+      if (hitSongArtist.toLocaleLowerCase().trim() !== songArtist.toLocaleLowerCase().trim()
+        && hitSongName.toLocaleLowerCase().trim() !== songName.toLocaleLowerCase().trim()) {
         console.log(`${songName} by ${songArtist}: ${hitSongName} by ${hitSongArtist}: Mismatch`);
         const warningRef = doc(db, "warnings", today);
         await getDoc(warningRef).then(d => {
@@ -155,8 +161,9 @@ export default async function (
             setDoc(warningRef, { date: today }, { merge: true });
           }
           updateDoc(warningRef,
-            convertNameAndArtistToId(songName.replace("/", ""), songArtist.replace("/", "")),
-            convertNameAndArtistToId(hitSongName.replace("/", ""), hitSongArtist.replace("/", "")));
+            convertNameAndArtistToId(cleanSongName, cleanSongArtist),
+            convertNameAndArtistToId(fbClean(hitSongName), fbClean(hitSongArtist))
+          );
         })
       } else {
         console.log(`${songName} by ${songArtist}: Saving to Log`);
@@ -168,8 +175,9 @@ export default async function (
             setDoc(logRef, { date: today }, { merge: true });
           }
           updateDoc(logRef,
-            convertNameAndArtistToId(songName.replace("/", ""), songArtist.replace("/", "")),
-            convertNameAndArtistToId(hitSongName.replace("/", ""), hitSongArtist.replace("/", "")));
+            convertNameAndArtistToId(cleanSongName, cleanSongArtist),
+            convertNameAndArtistToId(fbClean(hitSongName), fbClean(hitSongArtist))
+          );
         })
       }
     } catch (e) {
