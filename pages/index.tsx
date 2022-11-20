@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Playlist, SpotifyUser, Track } from "types/playlist";
 import { server } from "config/index";
-import { layout, authContainer, mainContainer, failedContainer, utilContainer, titleContainer, spotifyLogin, infoContainer, listContainer, iconButton } from "styles/app.css";
+import { layout, authContainer, mainContainer, failedContainer, utilContainer, titleContainer, spotifyLogin, infoContainer, listContainer, iconButton, spotifyLoggedIn } from "styles/app.css";
 import { playlistContainer, playlistTitle, playlistButton, playlistImage, playlistName, playlistDesc, playlistCount } from "styles/playlist.css";
 import { songArtist, songButton, songListItem, songContainer, songImage, songName } from "styles/song.css";
 import { convertTrackToId } from "util/track";
@@ -148,6 +148,7 @@ const App: NextPage = () => {
   };
 
   const signOut = () => {
+    window.location.reload();
   }
 
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist>();
@@ -162,12 +163,13 @@ const App: NextPage = () => {
     </section>
     <section className={authContainer}>
       {user
-        ? <div>
+        ? <div className={spotifyLoggedIn}>
+          <img src="img/spotify.svg" width="32px" height="32px" />
           <div>
-            Hello, {user?.display_name}
+            {user?.display_name}
           </div>
-          <button onClick={getPlaylists}>
-            Sign Out
+          <button onClick={signOut} className={iconButton}>
+            <BiLogOut size="24px" />
           </button>
         </div>
         : <a

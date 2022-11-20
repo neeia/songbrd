@@ -88,8 +88,6 @@ export const ellipsisText = style({
 })
 
 export const spotifyLogin = style({
-  fontSize: 24,
-  fontWeight: 500,
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
@@ -97,4 +95,17 @@ export const spotifyLogin = style({
   color: "#1ED760",
   width: "100%",
   height: "100%",
+  fontSize: 24,
+  fontWeight: 500,
+})
+export const spotifyLoggedIn = style({
+  display: "grid",
+  gridTemplateColumns: "min-content 1fr auto",
+  justifyContent: "center",
+  alignItems: "center",
+  gap: "0.5ch",
+  width: "100%",
+  height: "100%",
+  fontSize: 24,
+  fontWeight: 500,
 })
