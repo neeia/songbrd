@@ -34,7 +34,6 @@ const App: NextPage = () => {
     if (router.isReady && !token) {
       const q = router.query as unknown as Token;
       setToken(q);
-      console.log(q);
       router.replace({ pathname: "/", query: "" }, undefined, { shallow: true });
     }
   }, [router.query])

@@ -4,13 +4,6 @@ import cheerio, { CheerioAPI } from 'cheerio';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { doc, getDoc, getFirestore, setDoc, updateDoc } from 'firebase/firestore';
 import { convertNameAndArtistToId } from 'util/track';
-import Cors from 'cors'
-import useCors from 'util/useCors';
-
-// Initializing the cors middleware
-const cors = Cors({
-  methods: ['GET'],
-})
 
 const firebaseConfig = {
   apiKey: "AIzaSyCQ0mcy2XyM6hJITjsGOjTbtUrIg_VIRRg",
@@ -42,8 +35,6 @@ export default async function (
   req: NextApiRequest,
   res: NextApiResponse<Data>
 ) {
-  await useCors(req, res, cors);
-
   if (!getApps().length) initializeApp(firebaseConfig);
   let app = getApp();
   const db = getFirestore(app);
