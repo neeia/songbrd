@@ -1,6 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import axios from 'axios';
 import { CLIENT_ID } from '..';
+import Cors from 'cors'
+import useCors from 'util/useCors';
+
+// Initializing the cors middleware
+const cors = Cors({
+  methods: ['GET'],
+})
+
 
 const AUTH_ENDPOINT = "https://accounts.spotify.com/api/token"
 
@@ -15,6 +23,8 @@ export default async function (
   req: NextApiRequest,
   res: NextApiResponse<Data>
 ) {
+  await useCors(req, res, cors);
+
   const q = req.query as Request;
   const response = await axios.post(AUTH_ENDPOINT, {
     refresh_token: q.token,
