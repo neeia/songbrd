@@ -11,7 +11,7 @@ type Request = {
   code: string;
 }
 
-export default async function (
+export default async function auth(
   req: NextApiRequest,
   res: NextApiResponse<Data>
 ) {

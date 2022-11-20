@@ -11,7 +11,7 @@ type Request = {
   token: string;
 }
 
-export default async function (
+export default async function reauth(
   req: NextApiRequest,
   res: NextApiResponse<Data>
 ) {

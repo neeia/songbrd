@@ -31,7 +31,7 @@ type Request = {
   artist: string;
 }
 
-export default async function (
+export default async function fetchLyrics(
   req: NextApiRequest,
   res: NextApiResponse<Data>
 ) {
