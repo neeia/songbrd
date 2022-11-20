@@ -15,7 +15,6 @@ export default async function auth(
   req: NextApiRequest,
   res: NextApiResponse<Data>
 ) {
-
   const q = req.query as Request;
   const response = await axios.post(AUTH_ENDPOINT, {
     code: q.code,
