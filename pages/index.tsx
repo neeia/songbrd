@@ -36,20 +36,7 @@ const App: NextPage = () => {
       setToken(q);
       router.replace({ pathname: "/", query: "" }, undefined, { shallow: true });
     }
-  }, [router.query])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (token && user) fetch(`${server}/api/reauth?${new URLSearchParams({ token: token.refresh_token })}`)
-        .then(response => {
-          response.json().then(obj => {
-            setToken(obj);
-          })
-        })
-    }, 1800000);
-
-    return () => clearInterval(interval); // This represents the unmount function, in which you need to clear your interval to prevent memory leaks.
-  }, [])
+  }, [router])
 
   const [user, setUser] = useState<SpotifyUser>();
   const getUser = async (accToken: string) => {
@@ -63,6 +50,19 @@ const App: NextPage = () => {
   useEffect(() => {
     if (token?.access_token) getUser(token.access_token);
   }, [token]);
+
+  useEffect(() => {
+    const interval = setTimeout(() => {
+      if (token && user) fetch(`${server}/api/reauth?${new URLSearchParams({ token: token.refresh_token })}`)
+        .then(response => {
+          response.json().then(obj => {
+            setToken(obj);
+          })
+        })
+    }, 1800000);
+
+    return () => clearInterval(interval); // This represents the unmount function, in which you need to clear your interval to prevent memory leaks.
+  }, [token, user])
 
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const getPlaylists = async () => {

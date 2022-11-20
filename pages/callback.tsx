@@ -24,7 +24,7 @@ const Callback: NextPage = () => {
         })
       })
     } 
-  }, [router.query])
+  }, [router])
 
   return null;
 }
