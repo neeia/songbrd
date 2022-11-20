@@ -21,7 +21,7 @@ function htmlDecodeWithLineBreaks($: CheerioAPI, html: string) {
 }
 
 function fbClean(s: string) {
-  return s.replaceAll("/", "").replaceAll(".", "");
+  return s.replaceAll("/", "").replaceAll(".", "").replaceAll("[", "(").replaceAll("]", ")");
 }
 type Data = {
   lyrics: Record<string, number>;
@@ -44,12 +44,11 @@ export default async function (
     const songArtist = q.artist;
     const cleanSongArtist = fbClean(songArtist);
     const songName = q.name
-      .split("(Feat", 1)[0]
-      .split("(feat", 1)[0]
-      .split("- From", 1)[0]
-      .split("- from", 1)[0]
-      .split("(From", 1)[0]
-      .split("(from", 1)[0]
+      .split(/\([Ff]eat/, 1)[0]
+      .split(/\- [Ff]rom/, 1)[0]
+      .split(/\([Ff]rom/, 1)[0]
+      .split(/-(.*)Remaster/, 1)[0]
+      .split("- Single Version", 1)[0]
       .split("- Bonus Track", 1)[0];
     const cleanSongName = fbClean(songName);
 
@@ -127,7 +126,7 @@ export default async function (
         }
         updateDoc(failureRef, songArtist, songName);
       })
-      return res.status(204);
+      return res.status(204).end();
     }
 
     // Now we scrape the song's data
@@ -175,6 +174,7 @@ export default async function (
             convertNameAndArtistToId(cleanSongName, cleanSongArtist),
             convertNameAndArtistToId(fbClean(hitSongName), fbClean(hitSongArtist))
           );
+          return res.status(204).end();
         })
       } else {
         console.log(`${songName} by ${songArtist}: Saving to Log`);
@@ -189,12 +189,13 @@ export default async function (
             convertNameAndArtistToId(cleanSongName, cleanSongArtist),
             convertNameAndArtistToId(fbClean(hitSongName), fbClean(hitSongArtist))
           );
+          return res.status(200).json({ lyrics: words });
         })
       }
     } catch (e) {
       console.error("Error adding document: ", e);
     }
-    return res.status(200).json({ lyrics: words });
+    return res.status(500).end();
   } catch (error) {
     throw error;
   }
