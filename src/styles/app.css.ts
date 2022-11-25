@@ -16,7 +16,7 @@ export const layout = style({
 })
 
 export const scroller = style({
-  maxHeight: "100%",
+  maxHeight: "calc(100% - 40px)",
   overflowY: "auto",
   scrollbarColor: "rgba(155, 155, 155, 0.5)",
   scrollbarWidth: "thin",
@@ -45,6 +45,10 @@ export const listContainer = style([scroller, {
 
 export const titleContainer = style([sectionCard, {
   gridArea: "title",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  fontSize: "24px",
 }])
 export const authContainer = style([sectionCard, {
   gridArea: "auth",
@@ -59,6 +63,8 @@ export const infoContainer = style([sectionCard, {
   gridArea: "info",
   display: "grid",
   gridTemplateColumns: "1fr auto auto",
+  justifyContent: "center",
+  alignItems: "center",
 }])
 export const utilContainer = style([sectionCard, {
   gridArea: "util",
@@ -85,6 +91,10 @@ export const ellipsisText = style({
   overflow: "hidden",
   whiteSpace: "nowrap",
   textOverflow: "ellipsis",
+})
+
+export const titleIcon = style({
+  marginTop: "-4px",
 })
 
 export const spotifyLogin = style({

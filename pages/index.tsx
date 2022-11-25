@@ -1,9 +1,9 @@
-import type { NextPage } from "next";
+﻿import type { NextPage } from "next";
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Playlist, SpotifyUser, Track } from "types/playlist";
 import { server } from "config/index";
-import { layout, authContainer, mainContainer, failedContainer, utilContainer, titleContainer, spotifyLogin, infoContainer, listContainer, iconButton, spotifyLoggedIn } from "styles/app.css";
+import { layout, authContainer, mainContainer, failedContainer, utilContainer, titleContainer, spotifyLogin, infoContainer, listContainer, iconButton, spotifyLoggedIn, titleIcon } from "styles/app.css";
 import { playlistContainer, playlistTitle, playlistButton, playlistImage, playlistName, playlistDesc, playlistCount } from "styles/playlist.css";
 import { songArtist, songButton, songListItem, songContainer, songImage, songName } from "styles/song.css";
 import { convertTrackToId } from "util/track";
@@ -94,9 +94,11 @@ const App: NextPage = () => {
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const getSongs = async (s: string) => {
+    setWords({});
+    setTracks([]);
+    setFailedSongs([]);
     let data: { items: any[]; next: string | null; };
     let items: Track[] = [];
-    setTracks([]);
     do {
       const res = await axios.get(s, {
         headers: {
@@ -107,29 +109,22 @@ const App: NextPage = () => {
         }
       });
       data = res.data;
-      setTracks(oldTracks => {
-        const newTracks = [...oldTracks];
-        newTracks.push(...data.items.map((t: { track: Track }) => t.track).filter(track => !track.is_local));
-        items = newTracks;
-        return newTracks;
-      });
+      items.push(...data.items.map((t: { track: Track }) => t.track).filter(track => !track.is_local));
+
       if (data.next) s = data.next;
     } while (data.next);
 
-    items
-      .filter((track: Track) => !track.is_local)
-      .forEach((track: Track) => {
-        if (!words[convertTrackToId(track)]) {
-          getSong(track).then(res => {
-            if (res) setWords(oldWords => {
-              const newWords = { ...oldWords };
-              newWords[convertTrackToId(track)] = res.lyrics;
-              return newWords;
-            })
-            else setFailedSongs(fs => [...fs, track]);
-          })
-        }
+    setTracks(items);
+    items.forEach((track: Track) => {
+      getSong(track).then(res => {
+        if (res) setWords(oldWords => {
+          const newWords = { ...oldWords };
+          newWords[convertTrackToId(track)] = res.lyrics;
+          return newWords;
+        })
+        else setFailedSongs(fs => [...fs, track]);
       })
+    });
   }
 
   const getSong = async (s: Track) => {
@@ -154,11 +149,14 @@ const App: NextPage = () => {
   const [selectedTrack, setSelectedTrack] = useState<Track>();
   return <div className={layout}>
     <Head>
-      <title>Songbrd</title>
-      <link rel="icon" href="/favicon.ico" />
+      <title>Songb♪rd</title>
+      <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+      <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+      <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+      <link rel="manifest" href="/manifest.json" />
     </Head>
     <section className={titleContainer}>
-      <h1>Songbrd</h1>
+      <h1>Songb<img src="songbrd.svg" height="48px" alt="" className={titleIcon} />rd</h1>
     </section>
     <section className={authContainer}>
       {user
@@ -179,6 +177,15 @@ const App: NextPage = () => {
         </a>
       }
     </section>
+    <section className={infoContainer}>
+      <h2>Settings:</h2>
+      <button className={iconButton}>
+        <BiCog fontSize="32px" />
+      </button>
+      <button className={iconButton}>
+        <BiSun fontSize="32px" color="yellow" />
+      </button>
+    </section>
     <section className={playlistContainer}>
       <div className={playlistTitle}>
         <h2>Playlists</h2>
@@ -193,7 +200,7 @@ const App: NextPage = () => {
         {playlists.map(p => {
           const imgSrc = p.images[0].url;
           const playlistUrl = p.tracks.href;
-          return <button key={playlistUrl} className={playlistButton} onClick={() => { getSongs(playlistUrl); setSelectedPlaylist(p); }}>
+          return <button key={playlistUrl} className={playlistButton} onClick={() => { setSelectedPlaylist(p); getSongs(playlistUrl); }}>
             <img src={imgSrc} className={playlistImage} width="60px" height="60px" loading="lazy" />
             <div className={playlistName}>{p.name}</div>
             <div className={playlistDesc}>
@@ -207,7 +214,9 @@ const App: NextPage = () => {
       </div>
     </section>
     <section className={songContainer}>
-      <h2>{selectedPlaylist?.name ?? "Songs"}</h2>
+      <div className={playlistTitle}>
+        <h2>{selectedPlaylist?.name ?? "Songs"}</h2>
+      </div>
       <div className={listContainer}>
         {tracks.filter(track => !!words[convertTrackToId(track)]).map((t, i) => {
           const imgSrc = t.album.images[0]?.url;
@@ -254,19 +263,15 @@ const App: NextPage = () => {
     <section className={utilContainer}>
       <label htmlFor="download-progress"><h2>Songs Matched:</h2></label>
       {selectedPlaylist &&
-        <progress id="download-progress" max={selectedPlaylist.tracks.total} value={Object.keys(words).length + failedSongs.length}>
-          {Object.keys(words).length + failedSongs.length} of {selectedPlaylist.tracks.total}
+        <progress id="download-progress" max={tracks.length} value={Object.keys(words).length + failedSongs.length}>
+          {Object.keys(words).length + failedSongs.length} of {tracks.length}
         </progress>
       }
-    </section>
-    <section className={infoContainer}>
-      <h2>Settings:</h2>
-      <button className={iconButton}>
-        <BiCog fontSize="32px" />
-      </button>
-      <button className={iconButton}>
-        <BiSun fontSize="32px" />
-      </button>
+      {selectedPlaylist &&
+        <div>
+          {Object.keys(words).length + failedSongs.length} of {tracks.length}
+        </div>
+      }
     </section>
   </div>
 }

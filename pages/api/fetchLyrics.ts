@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import axios from 'axios';
 import cheerio, { CheerioAPI } from 'cheerio';
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { doc, getDoc, getFirestore, setDoc, updateDoc } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, getFirestore, setDoc, updateDoc } from 'firebase/firestore';
 import { convertNameAndArtistToId } from 'util/track';
 
 const firebaseConfig = {
@@ -54,9 +54,28 @@ export default async function fetchLyrics(
 
     // Check if song is already indexed in db
     const docRef = doc(db, "artists", cleanSongArtist, "songs", cleanSongName);
+    const warningRef = doc(db, "warnings", cleanSongArtist, "songs", cleanSongName);
+    const failRef = doc(db, "failures", cleanSongArtist, "songs", cleanSongName);
+
+    console.log(`${songName} by ${songArtist}: Searching Genius`);
+    const badDocs = [
+      doc(db, "artists", fbClean("Plug In Stereo"), "songs", fbClean("Better off Alone")),
+      doc(db, "artists", fbClean("K'NAAN"), "songs", fbClean("Wavin' Flag")),
+      doc(db, "artists", fbClean("Bowling For Soup"), "songs", fbClean("High School Never Ends - Main Version - Explicit")),
+    ];
+    badDocs.forEach(bad => deleteDoc(bad));
+
     const checkDoc = await getDoc(docRef)
     if (checkDoc.exists()) {
       return res.status(200).json({ lyrics: checkDoc.data() })
+    }
+    const checkWarning = await getDoc(warningRef)
+    if (checkWarning.exists()) {
+      return res.status(204).end();
+    }
+    const checkFail = await getDoc(failRef)
+    if (checkFail.exists()) {
+      return res.status(204).end();
     }
 
     // Search Genius API for artist + song name
@@ -66,7 +85,6 @@ export default async function fetchLyrics(
       },
     });
 
-    console.log(`${songName} by ${songArtist}: Searching Genius`);
     const hits = searchResults.data.response.hits;
     let songUrl = "";
     let hitSongName = "";
@@ -74,7 +92,6 @@ export default async function fetchLyrics(
 
     // Loop through search results
     for (const hitResult of hits) {
-      console.log(`${songName} by ${songArtist}: ${hitResult.result.id}: Found result of id`);
       const hitSong = await axios.get(`https://api.genius.com/songs/${hitResult.result.id}`, {
         headers: {
           Authorization: `Bearer ${process.env.GENIUS_ACCESS_TOKEN}`
@@ -92,7 +109,6 @@ export default async function fetchLyrics(
         }[]
       }[] = song.song_relationships;
       const translationOf = songRelationships.find(el => el.relationship_type === "translation_of");
-      console.log(`${songName} by ${songArtist}: ${song.title}: Result with title`);
       hitSongName = song.title;
       hitSongArtist = song.primary_artist.name;
       if (hitSongArtist === "Spotify") continue;
@@ -118,14 +134,25 @@ export default async function fetchLyrics(
 
     // If we've gone through the entire array without hitting a good url, then give up
     if (!songUrl) {
-      console.log(`${songName} by ${songArtist}: No good url!`);
-      const failureRef = doc(db, "failure", today);
-      await getDoc(failureRef).then(d => {
-        if (!d.exists()) {
-          setDoc(failureRef, { date: today }, { merge: true });
-        }
-        updateDoc(failureRef, songArtist, songName);
-      })
+      const d = await getDoc(failRef)
+      if (!d.exists()) {
+        setDoc(failRef, {
+          date: today
+        });
+      }
+      return res.status(204).end();
+    }
+    else if (hitSongArtist.toLocaleLowerCase().replaceAll(" ", "") !== songArtist.toLocaleLowerCase().replaceAll(" ", "")
+      && hitSongName.toLocaleLowerCase().replaceAll(" ", "") !== songName.toLocaleLowerCase().replaceAll(" ", "")) {
+      const d = await getDoc(warningRef)
+      if (!d.exists()) {
+        setDoc(warningRef, {
+          foundUrl: songUrl,
+          artist: fbClean(hitSongArtist),
+          name: fbClean(hitSongName),
+          date: today
+        });
+      }
       return res.status(204).end();
     }
 
@@ -162,38 +189,17 @@ export default async function fetchLyrics(
 
     // Save resulting object to db
     try {
-      if (hitSongArtist.toLocaleLowerCase().replaceAll(" ", "") !== songArtist.toLocaleLowerCase().replaceAll(" ", "")
-        && hitSongName.toLocaleLowerCase().replaceAll(" ", "") !== songName.toLocaleLowerCase().replaceAll(" ", "")) {
-        console.log(`${songName} by ${songArtist}: ${hitSongName} by ${hitSongArtist}: Mismatch`);
-        const warningRef = doc(db, "warnings", today);
-        await getDoc(warningRef).then(d => {
-          if (!d.exists()) {
-            setDoc(warningRef, { date: today }, { merge: true });
-          }
-          updateDoc(warningRef,
-            convertNameAndArtistToId(cleanSongName, cleanSongArtist),
-            convertNameAndArtistToId(fbClean(hitSongName), fbClean(hitSongArtist))
-          );
-          return res.status(204).end();
-        })
-      } else {
-        console.log(`${songName} by ${songArtist}: Saving to Log`);
-        setDoc(docRef, words);
+      setDoc(docRef, words);
 
-        const logRef = doc(db, "logs", today);
-        await getDoc(logRef).then(d => {
-          if (!d.exists()) {
-            setDoc(logRef, { date: today }, { merge: true });
-          }
-          updateDoc(logRef,
-            convertNameAndArtistToId(cleanSongName, cleanSongArtist),
-            convertNameAndArtistToId(fbClean(hitSongName), fbClean(hitSongArtist))
-          );
-          return res.status(200).json({ lyrics: words });
-        })
-      }
+      const logRef = doc(db, "logs", today);
+      await getDoc(logRef).then(d => {
+        if (!d.exists()) {
+          setDoc(logRef, { date: today }, { merge: true });
+        }
+        return res.status(200).json({ lyrics: words });
+      })
+
     } catch (e) {
-      console.error("Error adding document: ", e);
     }
     return res.status(500).end();
   } catch (error) {
