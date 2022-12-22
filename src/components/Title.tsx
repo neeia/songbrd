@@ -1,9 +1,10 @@
+import Image from "next/image";
 import { inlineIcon } from "styles/app.css";
 
 const Title = () => {
 
   return <>
-    Songb<img src="songbrd.svg" alt="i" className={inlineIcon} />rd
+    Songb<Image src="/songbrd.svg" width={128} height={128} className={inlineIcon} alt="i" />rd
   </>
 }
 

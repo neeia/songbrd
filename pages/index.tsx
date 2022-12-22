@@ -1,6 +1,6 @@
 ﻿import type { NextPage } from "next";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Playlist, SpotifyUser, Track } from "types/playlist";
 import { server } from "config/index";
@@ -13,6 +13,7 @@ import Title from "components/Title";
 import Menu from "components/Menu";
 import { playlistButton, playlistContainer, playlistCount, playlistDesc, playlistImage, playlistName, playlistTitle, refreshButton, textOverflow } from "styles/playlist.css";
 import { songArtist, songButton, songImage, songName } from "styles/song.css";
+import Image from "next/image";
 
 export const CLIENT_ID = "a70d66f34db04d7e86f52acc1615ec37"
 export const REDIRECT_URI = `${server}/callback/`
@@ -71,6 +72,7 @@ const App: NextPage = () => {
       setToken(q);
       router.replace({ pathname: "/", query: "" }, undefined, { shallow: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   const [user, setUser] = useState<SpotifyUser>();
@@ -125,7 +127,8 @@ const App: NextPage = () => {
   }
   useEffect(() => {
     if (user && token) getPlaylists();
-  }, [user])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, token])
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const getSongs = async (s: string) => {
@@ -178,11 +181,11 @@ const App: NextPage = () => {
 
   const [activeWord, setActiveWord] = useState<string>("");
   const [timer, setTimer] = useState<number>(0);
-  const getRandomWord = () => {
+  const getRandomWord = useCallback(() => {
     const words = Object.keys(procWords);
     setActiveWord(words[words.length * Math.random() | 0]);
     setTimer(initialTime);
-  }
+  }, [procWords])
   useEffect(() => {
     const interval = setTimeout(() => {
       if (!activeWord) return;
@@ -194,6 +197,7 @@ const App: NextPage = () => {
     }, 1000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timer, activeWord]);
 
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist>();
@@ -218,7 +222,7 @@ const App: NextPage = () => {
     <section className={loginContainer}>
       {user
         ? <div className={spotifyLoggedIn}>
-          <img src="img/spotify.svg" width="32px" height="32px" />
+          <Image src="/img/spotify.svg" width={32} height={32} className={inlineIcon} alt="Spotify" />
           <div>
             {user?.display_name}
           </div>
@@ -230,7 +234,7 @@ const App: NextPage = () => {
           className={spotifyLogin}
           href={`${AUTH_ENDPOINT}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=${RESPONSE_TYPE}&scope=${SCOPE}`}
         >
-          Login with <img src="img/spotify.svg" className={inlineIcon} /> Spotify
+          Login with <Image src="/img/spotify.svg" width={32} height={32} className={inlineIcon} alt="" /> Spotify
         </a>
       }
     </section>
@@ -276,7 +280,7 @@ const App: NextPage = () => {
                   const imgSrc = p.images[0].url;
                   const playlistUrl = p.tracks.href;
                   return <button key={playlistUrl} className={playlistButton} onClick={() => { setSelectedPlaylist(p); getSongs(playlistUrl); }}>
-                    <img src={imgSrc} className={playlistImage} width="60px" height="60px" loading="lazy" />
+                    <img src={imgSrc} className={playlistImage} width="60px" height="60px" loading="lazy" alt="" />
                     <div className={playlistName}>{p.name}</div>
                     <div className={playlistDesc}>
                       {p.description}
@@ -306,7 +310,7 @@ const App: NextPage = () => {
                   const imgSrc = t.album.images[0]?.url;
                   const name = t.name;
                   return <button key={i} className={songButton} onClick={() => setSelectedTrack(t)}>
-                    <img src={imgSrc} className={songImage} width="48px" height="48px" loading="lazy" />
+                    <img src={imgSrc} className={songImage} width="48px" height="48px" loading="lazy" alt="" />
                     <div className={songName}>{name}</div>
                     <div className={songArtist}>{t.artists.map(a => a.name).join(", ")}</div>
                   </button>

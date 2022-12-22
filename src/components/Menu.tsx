@@ -18,6 +18,7 @@ const Menu = (props: Props) => {
         onClose();
       } 
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return <FocusTrap active={open} focusTrapOptions={{ fallbackFocus: "#modal" }}>

@@ -72,6 +72,7 @@ export const loggedInTitleContainer = style([titleContainer, {
 
 export const inlineIcon = style({
   height: "1.25em",
+  width: "min-content",
 })
 
 export const loginContainer = style({
