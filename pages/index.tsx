@@ -1,21 +1,42 @@
 ﻿import type { NextPage } from "next";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Playlist, SpotifyUser, Track } from "types/playlist";
 import { server } from "config/index";
-import { layout, authContainer, mainContainer, failedContainer, utilContainer, titleContainer, spotifyLogin, infoContainer, listContainer, iconButton, spotifyLoggedIn, titleIcon } from "styles/app.css";
-import { playlistContainer, playlistTitle, playlistButton, playlistImage, playlistName, playlistDesc, playlistCount } from "styles/playlist.css";
-import { songArtist, songButton, songListItem, songContainer, songImage, songName } from "styles/song.css";
+import { layout, loginContainer, titleContainer, spotifyLogin, iconButton, spotifyLoggedIn, loginLayout, inlineIcon, settingsContainer, loggedInTitleContainer, listContainer, primary, secondary, generateButton, bigWord, timerContainer } from "styles/app.css";
 import { convertTrackToId } from "util/track";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { BiCog, BiRefresh, BiSun, BiMoon, BiLogOut } from "react-icons/bi";
+import { BiCog, BiRefresh, BiLogOut, BiHelpCircle, BiCodeAlt, BiChevronLeft, BiTimer } from "react-icons/bi";
+import Title from "components/Title";
+import Menu from "components/Menu";
+import { playlistButton, playlistContainer, playlistCount, playlistDesc, playlistImage, playlistName, playlistTitle, refreshButton, textOverflow } from "styles/playlist.css";
+import { songArtist, songButton, songImage, songName } from "styles/song.css";
 
 export const CLIENT_ID = "a70d66f34db04d7e86f52acc1615ec37"
 export const REDIRECT_URI = `${server}/callback/`
 const AUTH_ENDPOINT = "https://accounts.spotify.com/authorize"
 const RESPONSE_TYPE = "code"
 const SCOPE = "user-library-read playlist-read-private"
+
+const initialTime = 10;
+
+const signOut = () => {
+  window.location.reload();
+}
+
+const processWords = (words: Record<string, Record<string, number>>) => {
+  const out: Record<string, Word> = {};
+  Object.keys(words).forEach(song => {
+    Object.keys(words[song]).forEach(word => {
+      out[word] ??= { frequency: 0, songs: [] };
+      out[word].frequency += 1;
+      out[word].songs.push(song);
+    })
+  })
+  return out;
+}
 
 interface Token {
   access_token: string;
@@ -24,8 +45,22 @@ interface Token {
   refresh_token: string;
 }
 
+interface Word {
+  frequency: number;
+  songs: string[];
+}
+
 const App: NextPage = () => {
+  // song => word => frequency
   const [words, setWords] = useState<Record<string, Record<string, number>>>({});
+
+  // target: word => frequency, 
+  const [procWords, setProcWords] = useState<Record<string, Word>>({});
+  useEffect(() => {
+    const out = processWords(words)
+    setProcWords(out);
+  }, [words])
+
   const [failedSongs, setFailedSongs] = useState<Track[]>([]);
 
   const router = useRouter();
@@ -94,7 +129,6 @@ const App: NextPage = () => {
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const getSongs = async (s: string) => {
-    setWords({});
     setTracks([]);
     setFailedSongs([]);
     let data: { items: any[]; next: string | null; };
@@ -116,6 +150,7 @@ const App: NextPage = () => {
 
     setTracks(items);
     items.forEach((track: Track) => {
+      if (words[convertTrackToId(track)]) return;
       getSong(track).then(res => {
         if (res) setWords(oldWords => {
           const newWords = { ...oldWords };
@@ -141,13 +176,35 @@ const App: NextPage = () => {
     }
   };
 
-  const signOut = () => {
-    window.location.reload();
+  const [activeWord, setActiveWord] = useState<string>("");
+  const [timer, setTimer] = useState<number>(0);
+  const getRandomWord = () => {
+    const words = Object.keys(procWords);
+    setActiveWord(words[words.length * Math.random() | 0]);
+    setTimer(initialTime);
   }
+  useEffect(() => {
+    const interval = setTimeout(() => {
+      if (!activeWord) return;
+      setTimer(timer - 1)
+      if (timer === 0) {
+        // TODO: Should display some valid songs
+        getRandomWord();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timer, activeWord]);
 
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist>();
   const [selectedTrack, setSelectedTrack] = useState<Track>();
-  return <div className={layout}>
+
+  const [settings, openSettings] = useState(false);
+  const closeSettings = () => openSettings(false);
+  const [help, openHelp] = useState(false);
+  const closeHelp = () => openHelp(false);
+
+  return <div className={user ? layout : loginLayout}>
     <Head>
       <title>Songb♪rd</title>
       <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -155,10 +212,10 @@ const App: NextPage = () => {
       <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
       <link rel="manifest" href="/manifest.json" />
     </Head>
-    <section className={titleContainer}>
-      <h1>Songb<img src="songbrd.svg" height="48px" alt="" className={titleIcon} />rd</h1>
+    <section className={user ? loggedInTitleContainer : titleContainer}>
+      <h1><Title /></h1>
     </section>
-    <section className={authContainer}>
+    <section className={loginContainer}>
       {user
         ? <div className={spotifyLoggedIn}>
           <img src="img/spotify.svg" width="32px" height="32px" />
@@ -173,62 +230,123 @@ const App: NextPage = () => {
           className={spotifyLogin}
           href={`${AUTH_ENDPOINT}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=${RESPONSE_TYPE}&scope=${SCOPE}`}
         >
-          Login with <img src="img/spotify.svg" width="32px" height="32px" /> Spotify
+          Login with <img src="img/spotify.svg" className={inlineIcon} /> Spotify
         </a>
       }
     </section>
-    <section className={infoContainer}>
-      <h2>Settings:</h2>
-      <button className={iconButton}>
+    <div role="group" className={settingsContainer}>
+      <button className={iconButton} onClick={() => openHelp(true)}>
+        <BiHelpCircle fontSize="32px" />
+      </button>
+      <Menu open={help} onClose={closeHelp} title="Help">
+        Dark Theme
+        <button className={iconButton}>
+        </button>
+        Feedback
+        Version
+      </Menu>
+      <button className={iconButton} onClick={() => openSettings(true)}>
         <BiCog fontSize="32px" />
       </button>
-      <button className={iconButton}>
-        <BiSun fontSize="32px" color="yellow" />
-      </button>
-    </section>
-    <section className={playlistContainer}>
-      <div className={playlistTitle}>
-        <h2>Playlists</h2>
-        {user
-          ? <button onClick={getPlaylists} className={iconButton}>
-            <BiRefresh size="24px" />
-          </button>
-          : null
+      <Menu open={settings} onClose={closeSettings} title="Settings">
+        Dark Theme
+        <button className={iconButton}>
+        </button>
+        Feedback
+        Version
+      </Menu>
+      <a className={iconButton} href="https://github.com/neeia/songbrd" target="_blank" rel="noopener noreferrer">
+        <BiCodeAlt fontSize="32px" />
+      </a>
+    </div>
+    {user && playlists &&
+      <>
+        <section className={playlistContainer}>
+          {!selectedPlaylist || !tracks
+            // Playlist has not yet been selected
+            ? <>
+              <div className={playlistTitle}>
+                <h2 className={textOverflow}>Playlists</h2>
+                <button onClick={getPlaylists} className={refreshButton}>
+                  <BiRefresh size="24px" />
+                </button>
+              </div>
+              <div className={listContainer}>
+                {playlists.map(p => {
+                  const imgSrc = p.images[0].url;
+                  const playlistUrl = p.tracks.href;
+                  return <button key={playlistUrl} className={playlistButton} onClick={() => { setSelectedPlaylist(p); getSongs(playlistUrl); }}>
+                    <img src={imgSrc} className={playlistImage} width="60px" height="60px" loading="lazy" />
+                    <div className={playlistName}>{p.name}</div>
+                    <div className={playlistDesc}>
+                      {p.description}
+                    </div>
+                    <div className={playlistCount}>
+                      {p.tracks.total} songs
+                    </div>
+                  </button>
+                })}
+              </div>
+            </>
+            // Playlist has been selected
+            : <>
+              <div className={playlistTitle}>
+                <button className={iconButton} onClick={() => {
+                  setSelectedPlaylist(undefined);
+                  setTracks([]);
+                  setFailedSongs([]);
+                  setActiveWord("");
+                }}>
+                  <BiChevronLeft size="24px" />
+                </button>
+                <h2>{selectedPlaylist?.name ?? "Songs"}</h2>
+              </div>
+              <div className={listContainer}>
+                {tracks.filter(track => !!words[convertTrackToId(track)]).map((t, i) => {
+                  const imgSrc = t.album.images[0]?.url;
+                  const name = t.name;
+                  return <button key={i} className={songButton} onClick={() => setSelectedTrack(t)}>
+                    <img src={imgSrc} className={songImage} width="48px" height="48px" loading="lazy" />
+                    <div className={songName}>{name}</div>
+                    <div className={songArtist}>{t.artists.map(a => a.name).join(", ")}</div>
+                  </button>
+                })}
+              </div>
+            </>
+          }
+        </section>
+        {selectedPlaylist &&
+          <section className={primary}>
+            {!activeWord
+              ? <>
+                <button className={generateButton} disabled={tracks.length === 0} onClick={getRandomWord}>
+                  Start
+                </button>
+              </>
+              : <>
+                <div className={timerContainer}>
+                  <BiTimer size="24px" />
+                  {timer}
+                </div>
+                <div className={bigWord}>
+                  {activeWord.toLocaleUpperCase()}
+                </div>
+                <button className={generateButton} onClick={getRandomWord}>
+                  Next
+                </button>
+              </>
+            }
+          </section>
         }
-      </div>
-      <div className={listContainer}>
-        {playlists.map(p => {
-          const imgSrc = p.images[0].url;
-          const playlistUrl = p.tracks.href;
-          return <button key={playlistUrl} className={playlistButton} onClick={() => { setSelectedPlaylist(p); getSongs(playlistUrl); }}>
-            <img src={imgSrc} className={playlistImage} width="60px" height="60px" loading="lazy" />
-            <div className={playlistName}>{p.name}</div>
-            <div className={playlistDesc}>
-              {p.description}
-            </div>
-            <div className={playlistCount}>
-              {p.tracks.total} songs
-            </div>
-          </button>
-        })}
-      </div>
-    </section>
-    <section className={songContainer}>
-      <div className={playlistTitle}>
-        <h2>{selectedPlaylist?.name ?? "Songs"}</h2>
-      </div>
-      <div className={listContainer}>
-        {tracks.filter(track => !!words[convertTrackToId(track)]).map((t, i) => {
-          const imgSrc = t.album.images[0]?.url;
-          const name = t.name;
-          return <button key={i} className={songButton} onClick={() => setSelectedTrack(t)}>
-            <img src={imgSrc} className={songImage} width="48px" height="48px" loading="lazy" />
-            <div className={songName}>{name}</div>
-            <div className={songArtist}>{t.artists.map(a => a.name).join(", ")}</div>
-          </button>
-        })}
-      </div>
-    </section>
+      </>
+    }
+  </div>
+}
+export default App;
+
+/*
+     
+    
     <section className={failedContainer}>
       <h2>Failed to find:</h2>
       <div className={listContainer}>
@@ -273,6 +391,4 @@ const App: NextPage = () => {
         </div>
       }
     </section>
-  </div>
-}
-export default App;
+ */

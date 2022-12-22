@@ -1,18 +1,14 @@
-import { style } from '@vanilla-extract/css';
+import { style } from "@vanilla-extract/css";
 
-export const layout = style({
-  display: "grid",
-  gridTemplateAreas: `"auth title info"
-                      "playlist main song"
-                      "playlist main fail"
-                      "playlist main util"`,
-  gridTemplateColumns: "1fr 2fr 1fr",
-  gridTemplateRows: "72px 2fr 1fr 10%",
-  gap: "1rem",
-  padding: "1rem",
-  height: "100vh",
+const main = style({
   width: "100vw",
+  height: "100vh",
+  backgroundColor: "#121212",
+  padding: "1rem",
   boxSizing: "border-box",
+  marginLeft: "auto",
+  marginRight: "auto",
+  boxShadow: "0px 0px 36px 4px #000",
 })
 
 export const scroller = style({
@@ -32,81 +28,78 @@ export const scroller = style({
   },
 })
 
-export const sectionCard = style({
-  backgroundColor: "#121212",
-  borderRadius: "8px",
-  padding: "8px",
-  overflow: "hidden",
-})
 export const listContainer = style([scroller, {
   display: "flex",
   flexDirection: "column",
 }])
 
-export const titleContainer = style([sectionCard, {
-  gridArea: "title",
+export const loginLayout = style([main, {
+  display: "grid",
+  gridTemplateAreas: `"title" "auth" "settings"`,
+  gridTemplateRows: "40vh auto auto 1fr",
+  alignItems: "end",
+  justifyContent: "center",
+  justifyItems: "center",
+}])
+export const titleContainer = style({
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
-  fontSize: "24px",
-}])
-export const authContainer = style([sectionCard, {
-  gridArea: "auth",
-}])
-export const failedContainer = style([sectionCard, {
-  gridArea: "fail",
-}])
-export const mainContainer = style([sectionCard, {
-  gridArea: "main",
-}])
-export const infoContainer = style([sectionCard, {
-  gridArea: "info",
-  display: "grid",
-  gridTemplateColumns: "1fr auto auto",
-  justifyContent: "center",
-  alignItems: "center",
-}])
-export const utilContainer = style([sectionCard, {
-  gridArea: "util",
-}])
-
-export const listButton = style({
-  backgroundColor: "transparent",
-  border: 0,
-  padding: "8px",
-  ":hover": {
-    backgroundColor: "#323232",
-    cursor: "pointer",
+  fontSize: 36,
+  padding: 16,
+  "@media": {
+    "screen and (min-width: 768px)": {
+      fontSize: 48,
+    },
+    "screen and (min-width: 1200px)": {
+      fontSize: 56,
+    },
   }
 })
-export const iconButton = style([listButton, {
-  height: "min-content",
-  width: "min-content",
-  borderRadius: "50%",
-  lineHeight: "0px"
+export const loggedInTitleContainer = style([titleContainer, {
+  gridArea: "title",
+  fontSize: 12,
+  padding: 16,
+  "@media": {
+    "screen and (min-width: 768px)": {
+      fontSize: 16,
+    },
+    "screen and (min-width: 1200px)": {
+      fontSize: 24,
+    },
+  }
 }])
 
-export const ellipsisText = style({
-  textAlign: "left",
-  overflow: "hidden",
-  whiteSpace: "nowrap",
-  textOverflow: "ellipsis",
+export const inlineIcon = style({
+  height: "1.25em",
 })
 
-export const titleIcon = style({
-  marginTop: "-4px",
+export const loginContainer = style({
+  gridArea: "auth",
 })
-
 export const spotifyLogin = style({
-  display: "flex",
+  display: "inline-flex",
   justifyContent: "center",
   alignItems: "center",
   gap: "0.5ch",
   color: "#1ED760",
-  width: "100%",
-  height: "100%",
-  fontSize: 24,
+  fontSize: 20,
   fontWeight: 500,
+  border: "1px solid #1ED760",
+  padding: "4px 16px",
+  borderRadius: 9999,
+  ":hover": {
+    borderColor: "white",
+    backgroundColor: "#141D19",
+  },
+  "@media": {
+    "screen and (min-width: 768px)": {
+      fontSize: 24,
+    },
+    "screen and (min-width: 1200px)": {
+      fontSize: 28,
+    },
+  }
 })
 export const spotifyLoggedIn = style({
   display: "grid",
@@ -118,4 +111,91 @@ export const spotifyLoggedIn = style({
   height: "100%",
   fontSize: 24,
   fontWeight: 500,
+})
+export const settingsContainer = style({
+  gridArea: "settings",
+  display: "flex",
+  marginTop: 6,
+  gap: 4,
+})
+
+
+
+export const layout = style([main, {
+  display: "grid",
+  gridTemplateAreas: `"title content auth"
+                      "title content settings"
+                      "playlist secondary secondary"`,
+  gridTemplateRows: "min-content min-content minmax(0, 100%)",
+  gridTemplateColumns: "auto 1fr auto",
+  gap: "0px 1rem",
+  justifyContent: "center",
+  justifyItems: "center",
+}])
+
+export const listButton = style({
+  backgroundColor: "transparent",
+  border: 0,
+  padding: 8,
+  ":hover": {
+    backgroundColor: "#323232",
+    cursor: "pointer",
+  }
+})
+export const iconButton = style([listButton, {
+  height: "min-content",
+  width: "min-content",
+  borderRadius: "50%",
+  lineHeight: 0
+}])
+
+export const ellipsisText = style({
+  textAlign: "left",
+  overflow: "hidden",
+  whiteSpace: "nowrap",
+  textOverflow: "ellipsis",
+})
+
+export const primary = style({
+  gridArea: "content",
+  width: "100%",
+  height: "100%",
+  display: "grid",
+  gridTemplateAreas: `"word button" "timer button"`,
+  gridTemplateColumns: "1fr 30%",
+  gridTemplateRows: "1fr auto",
+  justifyItems: "center",
+  alignItems: "center",
+  gap: "2px 0px"
+})
+export const secondary = style({
+  gridArea: "secondary",
+  width: "100%",
+  height: "100%",
+})
+
+export const generateButton = style({
+  gridArea: "button",
+  backgroundColor: "#8c4ed7",
+  fontSize: 24,
+  border: 0,
+  padding: 8,
+  borderRadius: 6,
+  height: "min-content",
+  justifySelf: "start",
+  ":hover": {
+    backgroundColor: "#bb98e5",
+    cursor: "pointer",
+  }
+})
+export const bigWord = style({
+  gridArea: "word",
+  fontSize: 32,
+  textAlign: "center",
+  alignSelf: "end",
+})
+export const timerContainer = style({
+  gridArea: "timer",
+  display: "flex",
+  fontSize: 18,
 })

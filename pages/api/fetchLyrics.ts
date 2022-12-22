@@ -2,8 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import axios from 'axios';
 import cheerio, { CheerioAPI } from 'cheerio';
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { deleteDoc, doc, getDoc, getFirestore, setDoc, updateDoc } from 'firebase/firestore';
-import { convertNameAndArtistToId } from 'util/track';
+import { deleteDoc, doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCQ0mcy2XyM6hJITjsGOjTbtUrIg_VIRRg",

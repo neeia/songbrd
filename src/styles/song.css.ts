@@ -1,9 +1,9 @@
 import { style } from '@vanilla-extract/css';
-import { ellipsisText, listButton, sectionCard } from './app.css';
+import { ellipsisText, listButton } from './app.css';
 
-export const songContainer = style([sectionCard, {
-  gridArea: "song",
-}])
+export const songContainer = style({
+  gridArea: "playlist",
+})
 
 export const songListItem = style({
   display: "grid",
