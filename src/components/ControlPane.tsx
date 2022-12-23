@@ -26,8 +26,8 @@ const ControlPane = () => {
         Song Association is a game that tests your ability to remember song lyrics.
         You are given a word, and you must sing a section of a song that contains that word.
         Depending on the mode, you might have a time limit, so think fast! If time&apos;s up before you get to your word,
-        then you lose that word. If you get your word out, then you get a point. Once the game ends, you
-        tally up all your points, and that's your score!
+        then you lose that word. If you get your word out, then you earn a point. Once the game ends, you
+        tally up all your points, and that&apos;s your score.
       </p>
       <h3>How does it work?</h3>
       <p>
