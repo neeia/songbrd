@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import axios from 'axios';
 import cheerio, { CheerioAPI } from 'cheerio';
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { deleteDoc, doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
+import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCQ0mcy2XyM6hJITjsGOjTbtUrIg_VIRRg",
@@ -57,12 +57,6 @@ export default async function fetchLyrics(
     const failRef = doc(db, "failures", cleanSongArtist, "songs", cleanSongName);
 
     console.log(`${songName} by ${songArtist}: Searching Genius`);
-    const badDocs = [
-      doc(db, "artists", fbClean("Plug In Stereo"), "songs", fbClean("Better off Alone")),
-      doc(db, "artists", fbClean("K'NAAN"), "songs", fbClean("Wavin' Flag")),
-      doc(db, "artists", fbClean("Bowling For Soup"), "songs", fbClean("High School Never Ends - Main Version - Explicit")),
-    ];
-    badDocs.forEach(bad => deleteDoc(bad));
 
     const checkDoc = await getDoc(docRef)
     if (checkDoc.exists()) {

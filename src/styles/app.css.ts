@@ -74,6 +74,11 @@ export const inlineIcon = style({
   height: "1.25em",
   width: "min-content",
 })
+export const textBox = style({
+  backgroundColor: "#222222",
+  border: "1px solid grey",
+  borderRadius: 2,
+})
 
 export const loginContainer = style({
   gridArea: "auth",
@@ -86,13 +91,6 @@ export const spotifyLogin = style({
   color: "#1ED760",
   fontSize: 20,
   fontWeight: 500,
-  border: "1px solid #1ED760",
-  padding: "4px 16px",
-  borderRadius: 9999,
-  ":hover": {
-    borderColor: "white",
-    backgroundColor: "#141D19",
-  },
   "@media": {
     "screen and (min-width: 768px)": {
       fontSize: 24,
@@ -102,6 +100,11 @@ export const spotifyLogin = style({
     },
   }
 })
+export const usernameSearchBox = style([textBox, {
+  width: "20ch",
+  fontSize: "0.9em",
+  padding: 4,
+}])
 export const spotifyLoggedIn = style({
   display: "grid",
   gridTemplateColumns: "min-content 1fr auto",
@@ -139,7 +142,7 @@ export const listButton = style({
   border: 0,
   padding: 8,
   ":hover": {
-    backgroundColor: "#323232",
+    backgroundColor: "rgba(200, 200, 200, 0.25)",
     cursor: "pointer",
   }
 })
@@ -175,8 +178,10 @@ export const secondary = style({
   height: "100%",
 })
 
-export const generateButton = style({
+export const controlsContainer = style({
   gridArea: "button",
+})
+export const generateButton = style({
   backgroundColor: "#8c4ed7",
   fontSize: 24,
   border: 0,

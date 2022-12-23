@@ -7,19 +7,13 @@ const AUTH_ENDPOINT = "https://accounts.spotify.com/api/token"
 type Data = {
   lyrics: Record<string, number>;
 }
-type Request = {
-  code: string;
-}
 
 export default async function auth(
   req: NextApiRequest,
   res: NextApiResponse<Data>
 ) {
-  const q = req.query as Request;
   const response = await axios.post(AUTH_ENDPOINT, {
-    code: q.code,
-    redirect_uri: REDIRECT_URI,
-    grant_type: "authorization_code"
+    grant_type: "client_credentials"
   }, {
     headers: {
       Authorization: "Basic " + (new Buffer(CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET).toString('base64')),

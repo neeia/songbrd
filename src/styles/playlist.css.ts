@@ -7,6 +7,7 @@ export const playlistContainer = style({
   width: "40ch",
   borderBottom: "8px solid #8c4ed7",
   borderRadius: "0px 0px 8px 0px",
+  position: "relative",
 })
 
 export const playlistTitle = style({
@@ -16,6 +17,9 @@ export const playlistTitle = style({
 })
 export const textOverflow = style({
   textOverflow: "ellipsis",
+  overflow: "hidden",
+  whiteSpace: "nowrap",
+  paddingRight: "0.5ch",
 })
 export const refreshButton = style([iconButton, {
   marginLeft: "auto",
@@ -30,6 +34,12 @@ export const playlistButton = style([listButton, {
 }]);
 export const playlistImage = style({
   gridArea: "img",
+  width: 60,
+  height: 60,
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "#424242",
 })
 export const playlistName = style([ellipsisText, {
   gridArea: "name",

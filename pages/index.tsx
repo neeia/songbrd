@@ -1,59 +1,94 @@
 ﻿import type { NextPage } from "next";
-import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Playlist, SpotifyUser, Track } from "types/playlist";
 import { server } from "config/index";
-import { layout, loginContainer, titleContainer, spotifyLogin, iconButton, spotifyLoggedIn, loginLayout, inlineIcon, settingsContainer, loggedInTitleContainer, listContainer, primary, secondary, generateButton, bigWord, timerContainer } from "styles/app.css";
+import {
+  layout, loginContainer, titleContainer, iconButton, spotifyLoggedIn,
+  loginLayout, inlineIcon, settingsContainer, loggedInTitleContainer,
+  listContainer, primary, secondary, generateButton, bigWord, timerContainer,
+  controlsContainer, spotifyLogin, usernameSearchBox
+} from "styles/app.css";
 import { convertTrackToId } from "util/track";
 import Head from "next/head";
-import { useRouter } from "next/router";
-import { BiCog, BiRefresh, BiLogOut, BiHelpCircle, BiCodeAlt, BiChevronLeft, BiTimer } from "react-icons/bi";
+import {
+  BiCog, BiRefresh, BiLogOut, BiHelpCircle, BiCodeAlt, BiChevronLeft,
+  BiTimer, BiLogInCircle
+} from "react-icons/bi";
 import Title from "components/Title";
 import Menu from "components/Menu";
-import { playlistButton, playlistContainer, playlistCount, playlistDesc, playlistImage, playlistName, playlistTitle, refreshButton, textOverflow } from "styles/playlist.css";
+import {
+  playlistButton, playlistContainer, playlistCount, playlistDesc, playlistImage,
+  playlistName, playlistTitle, refreshButton, textOverflow
+} from "styles/playlist.css";
 import { songArtist, songButton, songImage, songName } from "styles/song.css";
 import Image from "next/image";
+import ProgressBar from "../src/components/ProgressBar";
 
 export const CLIENT_ID = "a70d66f34db04d7e86f52acc1615ec37"
-export const REDIRECT_URI = `${server}/callback/`
-const AUTH_ENDPOINT = "https://accounts.spotify.com/authorize"
-const RESPONSE_TYPE = "code"
-const SCOPE = "user-library-read playlist-read-private"
+export const REDIRECT_URI = `${server}/`
 
 const initialTime = 10;
 
-const signOut = () => {
-  window.location.reload();
+const getToken = async () => {
+  const response = await fetch(`${server}/api/auth`);
+
+  if (!response.ok) {
+    throw new Error(`Error: ${response.status}`);
+  }
+  try {
+    return await response.json();
+  }
+  catch (e) {
+    return null;
+  }
+};
+
+const getPlaylists = async (username: string, token: string) => {
+  let data: { items: Playlist[]; next: string | null; };
+  let s = `https://api.spotify.com/v1/users/${username}/playlists`;
+  const out = [];
+  do {
+    const res = await axios.get(s, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      params: {
+        limit: 50,
+      }
+    })
+    data = res.data;
+    out.push(...data.items);
+    if (data.next) s = data.next;
+  } while (data.next);
+  return out;
 }
 
-const processWords = (words: Record<string, Record<string, number>>) => {
+const processWords = (words: Record<string, Lyrics>) => {
   const out: Record<string, Word> = {};
-  Object.keys(words).forEach(song => {
-    Object.keys(words[song]).forEach(word => {
+  Object.values(words).forEach(lyrics => {
+    Object.keys(lyrics.words).forEach(word => {
       out[word] ??= { frequency: 0, songs: [] };
       out[word].frequency += 1;
-      out[word].songs.push(song);
+      out[word].songs.push(lyrics.song);
     })
   })
   return out;
 }
 
-interface Token {
-  access_token: string;
-  token_type: string;
-  expires_in: string;
-  refresh_token: string;
+interface Lyrics {
+  song: Track;
+  words: Record<string, number>
 }
 
 interface Word {
   frequency: number;
-  songs: string[];
+  songs: Track[];
 }
 
 const App: NextPage = () => {
   // song => word => frequency
-  const [words, setWords] = useState<Record<string, Record<string, number>>>({});
+  const [words, setWords] = useState<Record<string, Lyrics>>({});
 
   // target: word => frequency, 
   const [procWords, setProcWords] = useState<Record<string, Word>>({});
@@ -64,74 +99,31 @@ const App: NextPage = () => {
 
   const [failedSongs, setFailedSongs] = useState<Track[]>([]);
 
-  const router = useRouter();
-  const [token, setToken] = useState<Token | undefined>();
-  useEffect(() => {
-    if (router.isReady && !token) {
-      const q = router.query as unknown as Token;
-      setToken(q);
-      router.replace({ pathname: "/", query: "" }, undefined, { shallow: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router])
+  const [username, setUsername] = useState<string>("");
+  const [usernameSearch, setUsernameSearch] = useState<string>("")
 
-  const [user, setUser] = useState<SpotifyUser>();
-  const getUser = async (accToken: string) => {
-    const { data } = await axios.get("https://api.spotify.com/v1/me/", {
-      headers: {
-        Authorization: `Bearer ${accToken}`
-      },
+  const [token, setToken] = useState<string>("");
+  useEffect(() => {
+    getToken().then(value => {
+      setToken(value.access_token);
     })
-    setUser(data);
-  }
-  useEffect(() => {
-    if (token?.access_token) getUser(token.access_token);
-  }, [token]);
-
-  useEffect(() => {
-    const interval = setTimeout(() => {
-      if (token && user) fetch(`${server}/api/reauth?${new URLSearchParams({ token: token.refresh_token })}`)
-        .then(response => {
-          response.json().then(obj => {
-            setToken(obj);
-          })
-        })
-    }, 1800000);
-
-    return () => clearInterval(interval); // This represents the unmount function, in which you need to clear your interval to prevent memory leaks.
-  }, [token, user])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const getPlaylists = async () => {
-    if (!user || !token) return;
-    let data: { items: Playlist[]; next: string | null; };
-    let s = "https://api.spotify.com/v1/me/playlists";
-    setPlaylists([]);
-    do {
-      const res = await axios.get(s, {
-        headers: {
-          Authorization: `Bearer ${token?.access_token}`
-        },
-        params: {
-          limit: 50,
-        }
-      })
-      data = res.data;
-      setPlaylists(oldPlaylists => {
-        const newPlaylists = [...oldPlaylists];
-        newPlaylists.push(...data.items);
-        return newPlaylists;
-      });
-      if (data.next) s = data.next;
-    } while (data.next);
-  }
   useEffect(() => {
-    if (user && token) getPlaylists();
+    if (username) {
+      setPlaylists([]);
+      getPlaylists(username, token).then(value => {
+        setPlaylists(value);
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, token])
+  }, [username])
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const getSongs = async (s: string) => {
+    setWords({});
     setTracks([]);
     setFailedSongs([]);
     let data: { items: any[]; next: string | null; };
@@ -139,7 +131,7 @@ const App: NextPage = () => {
     do {
       const res = await axios.get(s, {
         headers: {
-          Authorization: `Bearer ${token?.access_token}`
+          Authorization: `Bearer ${token}`
         },
         params: {
           limit: 50,
@@ -153,11 +145,10 @@ const App: NextPage = () => {
 
     setTracks(items);
     items.forEach((track: Track) => {
-      if (words[convertTrackToId(track)]) return;
       getSong(track).then(res => {
         if (res) setWords(oldWords => {
           const newWords = { ...oldWords };
-          newWords[convertTrackToId(track)] = res.lyrics;
+          newWords[convertTrackToId(track)] = { song: track, words: res.lyrics };
           return newWords;
         })
         else setFailedSongs(fs => [...fs, track]);
@@ -181,14 +172,16 @@ const App: NextPage = () => {
 
   const [activeWord, setActiveWord] = useState<string>("");
   const [timer, setTimer] = useState<number>(0);
+  const [paused, setPaused] = useState<boolean>(true);
   const getRandomWord = useCallback(() => {
     const words = Object.keys(procWords);
     setActiveWord(words[words.length * Math.random() | 0]);
     setTimer(initialTime);
+    setPaused(false);
   }, [procWords])
   useEffect(() => {
     const interval = setTimeout(() => {
-      if (!activeWord) return;
+      if (!activeWord || paused) return;
       setTimer(timer - 1)
       if (timer === 0) {
         // TODO: Should display some valid songs
@@ -208,7 +201,7 @@ const App: NextPage = () => {
   const [help, openHelp] = useState(false);
   const closeHelp = () => openHelp(false);
 
-  return <div className={user ? layout : loginLayout}>
+  return <div className={username ? layout : loginLayout}>
     <Head>
       <title>Songb♪rd</title>
       <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -216,41 +209,47 @@ const App: NextPage = () => {
       <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
       <link rel="manifest" href="/manifest.json" />
     </Head>
-    <section className={user ? loggedInTitleContainer : titleContainer}>
+    <section className={username ? loggedInTitleContainer : titleContainer}>
       <h1><Title /></h1>
     </section>
     <section className={loginContainer}>
-      {user
+      {username
         ? <div className={spotifyLoggedIn}>
           <Image src="/img/spotify.svg" width={32} height={32} className={inlineIcon} alt="Spotify" />
           <div>
-            {user?.display_name}
+            {username}
           </div>
-          <button onClick={signOut} className={iconButton}>
+          <button onClick={() => window.location.reload()} className={iconButton}>
             <BiLogOut size="24px" />
           </button>
         </div>
-        : <a
-          className={spotifyLogin}
-          href={`${AUTH_ENDPOINT}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=${RESPONSE_TYPE}&scope=${SCOPE}`}
-        >
-          Login with <Image src="/img/spotify.svg" width={32} height={32} className={inlineIcon} alt="" /> Spotify
-        </a>
+        : <form>
+          <label className={spotifyLogin}>
+            <Image src="/img/spotify.svg" width={32} height={32} className={inlineIcon} alt="Spotify" /> ID:
+            <input value={usernameSearch} className={usernameSearchBox} onChange={e => setUsernameSearch(e.target.value)} />
+            <button type="submit"
+              className={iconButton}
+              onClick={e => {
+                e.preventDefault();
+                setUsername(usernameSearch);
+              }}
+            >
+              <BiLogInCircle size="32px" /></button>
+          </label>
+        </form>
       }
     </section>
     <div role="group" className={settingsContainer}>
       <button className={iconButton} onClick={() => openHelp(true)}>
-        <BiHelpCircle fontSize="32px" />
+        <BiHelpCircle size="32px" />
       </button>
-      <Menu open={help} onClose={closeHelp} title="Help">
-        Dark Theme
-        <button className={iconButton}>
-        </button>
-        Feedback
-        Version
+      <Menu open={help} onClose={closeHelp} title="About">
+        What is Songbird?
+        Songbird is a personalized web-based version of the Song Association game.
+        https://www.elle.com/song-association/
       </Menu>
       <button className={iconButton} onClick={() => openSettings(true)}>
-        <BiCog fontSize="32px" />
+        <BiCog size="32px" />
       </button>
       <Menu open={settings} onClose={closeSettings} title="Settings">
         Dark Theme
@@ -260,10 +259,10 @@ const App: NextPage = () => {
         Version
       </Menu>
       <a className={iconButton} href="https://github.com/neeia/songbrd" target="_blank" rel="noopener noreferrer">
-        <BiCodeAlt fontSize="32px" />
+        <BiCodeAlt size="32px" />
       </a>
     </div>
-    {user && playlists &&
+    {username && playlists &&
       <>
         <section className={playlistContainer}>
           {!selectedPlaylist || !tracks
@@ -271,16 +270,27 @@ const App: NextPage = () => {
             ? <>
               <div className={playlistTitle}>
                 <h2 className={textOverflow}>Playlists</h2>
-                <button onClick={getPlaylists} className={refreshButton}>
+                <button onClick={() => getPlaylists(username, token)} className={refreshButton}>
                   <BiRefresh size="24px" />
                 </button>
               </div>
               <div className={listContainer}>
                 {playlists.map(p => {
-                  const imgSrc = p.images[0].url;
+                  const img = p.images[0];
                   const playlistUrl = p.tracks.href;
                   return <button key={playlistUrl} className={playlistButton} onClick={() => { setSelectedPlaylist(p); getSongs(playlistUrl); }}>
-                    <img src={imgSrc} className={playlistImage} width="60px" height="60px" loading="lazy" alt="" />
+                    <div className={playlistImage}>
+                      {img
+                        ? <img src={img.url} width="60px" height="60px" loading="lazy" alt="" />
+                        : <svg role="img" height="24" width="24" viewBox="0 0 24 24">
+                          <path
+                            d="M6 3h15v15.167a3.5 3.5 0 11-3.5-3.5H19V5H8v13.167a3.5 3.5 0 11-3.5-3.5H6V3zm0
+                              13.667H4.5a1.5 1.5 0 101.5 1.5v-1.5zm13 0h-1.5a1.5 1.5 0 101.5 1.5v-1.5z"
+                            fill="#aaaaaa"
+                          />
+                        </svg>
+                      }
+                    </div>
                     <div className={playlistName}>{p.name}</div>
                     <div className={playlistDesc}>
                       {p.description}
@@ -303,7 +313,7 @@ const App: NextPage = () => {
                 }}>
                   <BiChevronLeft size="24px" />
                 </button>
-                <h2>{selectedPlaylist?.name ?? "Songs"}</h2>
+                <h2 className={textOverflow}>{selectedPlaylist?.name ?? "Songs"}</h2>
               </div>
               <div className={listContainer}>
                 {tracks.filter(track => !!words[convertTrackToId(track)]).map((t, i) => {
@@ -316,6 +326,10 @@ const App: NextPage = () => {
                   </button>
                 })}
               </div>
+              <ProgressBar
+                max={tracks.length}
+                value={Object.keys(words).length + failedSongs.length}
+              />
             </>
           }
         </section>
@@ -335,9 +349,11 @@ const App: NextPage = () => {
                 <div className={bigWord}>
                   {activeWord.toLocaleUpperCase()}
                 </div>
-                <button className={generateButton} onClick={getRandomWord}>
-                  Next
-                </button>
+                <div className={controlsContainer}>
+                  <button className={generateButton} onClick={getRandomWord}>
+                    Skip
+                  </button>
+                </div>
               </>
             }
           </section>
@@ -349,8 +365,8 @@ const App: NextPage = () => {
 export default App;
 
 /*
-     
-    
+
+
     <section className={failedContainer}>
       <h2>Failed to find:</h2>
       <div className={listContainer}>
@@ -383,16 +399,43 @@ export default App;
       </div>
     </section>
     <section className={utilContainer}>
-      <label htmlFor="download-progress"><h2>Songs Matched:</h2></label>
-      {selectedPlaylist &&
-        <progress id="download-progress" max={tracks.length} value={Object.keys(words).length + failedSongs.length}>
-          {Object.keys(words).length + failedSongs.length} of {tracks.length}
-        </progress>
-      }
-      {selectedPlaylist &&
-        <div>
-          {Object.keys(words).length + failedSongs.length} of {tracks.length}
-        </div>
-      }
     </section>
  */
+
+  //const router = useRouter();
+  //const [token, setToken] = useState<Token | undefined>();
+  //useEffect(() => {
+  //  if (router.isReady && !token) {
+  //    const q = router.query as unknown as Token;
+  //    setToken(q);
+  //    router.replace({ pathname: "/", query: "" }, undefined, { shallow: true });
+  //  }
+  //  // eslint-disable-next-line react-hooks/exhaustive-deps
+  //}, [router])
+
+  //const [user, setUser] = useState<SpotifyUser>();
+  //const getUser = async (accToken: string) => {
+  //  const { data } = await axios.get("https://api.spotify.com/v1/me/", {
+  //    headers: {
+  //      Authorization: `Bearer ${accToken}`
+  //    },
+  //  })
+  //  setUser(data);
+  //}
+  //useEffect(() => {
+  //  if (token?.access_token) getUser(token.access_token);
+  //}, [token]);
+
+  // Reauthenticate user at 30 minute intervals
+  //useEffect(() => {
+  //  const interval = setTimeout(() => {
+  //    if (token && user) fetch(`${server}/api/reauth?${new URLSearchParams({ token: token.refresh_token })}`)
+  //      .then(response => {
+  //        response.json().then(obj => {
+  //          setToken(obj);
+  //        })
+  //      })
+  //  }, 1800000);
+
+  //  return () => clearInterval(interval); // This represents the unmount function, in which you need to clear your interval to prevent memory leaks.
+  //}, [token, user])
