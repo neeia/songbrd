@@ -150,7 +150,12 @@ export const iconButton = style([listButton, {
   height: "min-content",
   width: "min-content",
   borderRadius: "50%",
-  lineHeight: 0
+  lineHeight: 0,
+  selectors: {
+    "a.&": {
+      color: "unset",
+    }
+  }
 }])
 
 export const ellipsisText = style({
