@@ -24,11 +24,13 @@ import {
 import { songArtist, songButton, songImage, songName } from "styles/song.css";
 import Image from "next/image";
 import ProgressBar from "../src/components/ProgressBar";
+import ControlPane from "../src/components/ControlPane";
 
 export const CLIENT_ID = "a70d66f34db04d7e86f52acc1615ec37"
 export const REDIRECT_URI = `${server}/`
 
-const initialTime = 10;
+const initialTime = 15;
+const answersTime = 5;
 
 const getToken = async () => {
   const response = await fetch(`${server}/api/auth`);
@@ -65,7 +67,7 @@ const getPlaylists = async (username: string, token: string) => {
 }
 
 const processWords = (words: Record<string, Lyrics>) => {
-  const out: Record<string, Word> = {};
+  const out: Record<string, WordData> = {};
   Object.values(words).forEach(lyrics => {
     Object.keys(lyrics.words).forEach(word => {
       out[word] ??= { frequency: 0, songs: [] };
@@ -81,9 +83,15 @@ interface Lyrics {
   words: Record<string, number>
 }
 
-interface Word {
+interface WordData {
   frequency: number;
   songs: Track[];
+}
+
+enum GAMESTATE {
+  NOTHING = 0,
+  GUESSING = 1,
+  ANSWERS = 2,
 }
 
 const App: NextPage = () => {
@@ -91,7 +99,7 @@ const App: NextPage = () => {
   const [words, setWords] = useState<Record<string, Lyrics>>({});
 
   // target: word => frequency, 
-  const [procWords, setProcWords] = useState<Record<string, Word>>({});
+  const [procWords, setProcWords] = useState<Record<string, WordData>>({});
   useEffect(() => {
     const out = processWords(words)
     setProcWords(out);
@@ -172,34 +180,42 @@ const App: NextPage = () => {
 
   const [activeWord, setActiveWord] = useState<string>("");
   const [timer, setTimer] = useState<number>(0);
-  const [paused, setPaused] = useState<boolean>(true);
-  const getRandomWord = useCallback(() => {
+  const [gameState, setGameState] = useState<GAMESTATE>(0);
+  const loadNextWord = useCallback(() => {
     const words = Object.keys(procWords);
     setActiveWord(words[words.length * Math.random() | 0]);
     setTimer(initialTime);
-    setPaused(false);
+    setGameState(1);
   }, [procWords])
+  const showAnswers = () => {
+    setGameState(2);
+    setTimer(answersTime);
+    console.log(procWords[activeWord].songs.map(track => track.name));
+  }
   useEffect(() => {
     const interval = setTimeout(() => {
-      if (!activeWord || paused) return;
+      if (!activeWord || gameState === GAMESTATE.NOTHING) return;
       setTimer(timer - 1)
       if (timer === 0) {
-        // TODO: Should display some valid songs
-        getRandomWord();
+        switch (gameState) {
+          case 1:
+            showAnswers();
+            break;
+          case 2:
+            loadNextWord();
+            break;
+          default:
+            break;
+        }
       }
     }, 1000);
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timer, activeWord]);
+  }, [timer, activeWord, loadNextWord, showAnswers]);
 
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist>();
   const [selectedTrack, setSelectedTrack] = useState<Track>();
-
-  const [settings, openSettings] = useState(false);
-  const closeSettings = () => openSettings(false);
-  const [help, openHelp] = useState(false);
-  const closeHelp = () => openHelp(false);
 
   return <div className={username ? layout : loginLayout}>
     <Head>
@@ -239,29 +255,7 @@ const App: NextPage = () => {
         </form>
       }
     </section>
-    <div role="group" className={settingsContainer}>
-      <button className={iconButton} onClick={() => openHelp(true)}>
-        <BiHelpCircle size="32px" />
-      </button>
-      <Menu open={help} onClose={closeHelp} title="About">
-        What is Songbird?
-        Songbird is a personalized web-based version of the Song Association game.
-        https://www.elle.com/song-association/
-      </Menu>
-      <button className={iconButton} onClick={() => openSettings(true)}>
-        <BiCog size="32px" />
-      </button>
-      <Menu open={settings} onClose={closeSettings} title="Settings">
-        Dark Theme
-        <button className={iconButton}>
-        </button>
-        Feedback
-        Version
-      </Menu>
-      <a className={iconButton} href="https://github.com/neeia/songbrd" target="_blank" rel="noopener noreferrer">
-        <BiCodeAlt size="32px" />
-      </a>
-    </div>
+    <ControlPane />
     {username && playlists &&
       <>
         <section className={playlistContainer}>
@@ -337,7 +331,7 @@ const App: NextPage = () => {
           <section className={primary}>
             {!activeWord
               ? <>
-                <button className={generateButton} disabled={tracks.length === 0} onClick={getRandomWord}>
+                <button className={generateButton} disabled={tracks.length === 0} onClick={loadNextWord}>
                   Start
                 </button>
               </>
@@ -350,8 +344,8 @@ const App: NextPage = () => {
                   {activeWord.toLocaleUpperCase()}
                 </div>
                 <div className={controlsContainer}>
-                  <button className={generateButton} onClick={getRandomWord}>
-                    Skip
+                  <button className={generateButton} onClick={loadNextWord}>
+                    Next
                   </button>
                 </div>
               </>
