@@ -105,6 +105,9 @@ export const usernameSearchBox = style([textBox, {
   fontSize: "0.9em",
   padding: 4,
 }])
+export const errorText = style({
+  color: "rgb(255, 40, 40)",
+})
 export const spotifyLoggedIn = style({
   display: "grid",
   gridTemplateColumns: "min-content 1fr auto",
@@ -129,7 +132,7 @@ export const layout = style([main, {
   display: "grid",
   gridTemplateAreas: `"title content auth"
                       "title content settings"
-                      "playlist secondary secondary"`,
+                      "playlist secondary tertiary"`,
   gridTemplateRows: "min-content min-content minmax(0, 100%)",
   gridTemplateColumns: "auto 1fr auto",
   gap: "0px 1rem",
@@ -169,10 +172,7 @@ export const primary = style({
   gridArea: "content",
   width: "100%",
   height: "100%",
-  display: "grid",
-  gridTemplateAreas: `"word button" "timer button"`,
-  gridTemplateColumns: "1fr 30%",
-  gridTemplateRows: "1fr auto",
+  display: "flex",
   justifyItems: "center",
   alignItems: "center",
   gap: "2px 0px"
@@ -181,32 +181,92 @@ export const secondary = style({
   gridArea: "secondary",
   width: "100%",
   height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  alignItems: "center",
+  gap: 8,
+  fontSize: "2em",
+  paddingBottom: "20%",
+})
+export const tertiary = style({
+  gridArea: "tertiary",
+  width: "100%",
+  height: "100%",
 })
 
-export const controlsContainer = style({
-  gridArea: "button",
-})
-export const generateButton = style({
+export const gameButton = style({
   backgroundColor: "#8c4ed7",
   fontSize: 24,
   border: 0,
   padding: 8,
   borderRadius: 6,
   height: "min-content",
-  justifySelf: "start",
   ":hover": {
     backgroundColor: "#bb98e5",
     cursor: "pointer",
   }
 })
-export const bigWord = style({
-  gridArea: "word",
-  fontSize: 32,
+
+export const startButton = style([gameButton, {
+  width: "100%",
+  maxWidth: "25ch",
+  display: "grid",
+  gridTemplateAreas: `"img label" "img desc"`,
+  gridTemplateColumns: "auto 1fr",
+  alignItems: "center",
+  gap: "0px 1ch",
+  paddingLeft: "0.25ch",
+  textAlign: "left"
+}])
+export const startImg = style({
+  gridArea: "img",
+  
+})
+export const startLabel = style({
+  gridArea: "label",
+  fontSize: "1.5em",
+  lineHeight: "0.9"
+})
+export const startDesc = style({
+  gridArea: "desc",
+  fontSize: ".75em"
+})
+
+export const gameArea = style({
+  gridArea: "secondary",
+  width: "100%",
+  height: "100%",
+  display: "grid",
+  gridTemplateRows: "min-content auto 1fr auto min-content",
+  justifyItems: "center",
+
+})
+export const wordCount = style({
+  fontSize: 12,
   textAlign: "center",
   alignSelf: "end",
 })
-export const timerContainer = style({
-  gridArea: "timer",
+export const bigWord = style({
+  fontSize: 32,
+  textAlign: "center",
+  alignSelf: "end",
+  lineHeight: "0.9",
+  paddingBottom: "20px"
+})
+export const controlsContainer = style({
   display: "flex",
-  fontSize: 18,
+  gap: 12,
+})
+export const gameControlButton = style([gameButton, {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  width: "8ch",
+}])
+export const timerContainer = style({
+  display: "flex",
+  fontSize: 32,
+  width: "100%",
+  maxWidth: "50ch",
 })

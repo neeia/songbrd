@@ -1,36 +1,34 @@
 ﻿import type { NextPage } from "next";
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Playlist, SpotifyUser, Track } from "types/playlist";
 import { server } from "config/index";
 import {
   layout, loginContainer, titleContainer, iconButton, spotifyLoggedIn,
   loginLayout, inlineIcon, settingsContainer, loggedInTitleContainer,
-  listContainer, primary, secondary, generateButton, bigWord, timerContainer,
-  controlsContainer, spotifyLogin, usernameSearchBox
+  listContainer, primary, secondary, gameButton, bigWord, timerContainer,
+  controlsContainer, spotifyLogin, usernameSearchBox, startButton, startImg, startLabel, startDesc, errorText, gameArea, wordCount, gameControlButton
 } from "styles/app.css";
 import { convertTrackToId } from "util/track";
 import Head from "next/head";
-import {
-  BiCog, BiRefresh, BiLogOut, BiHelpCircle, BiCodeAlt, BiChevronLeft,
-  BiTimer, BiLogInCircle
-} from "react-icons/bi";
+import { BiRefresh, BiLogOut, BiChevronLeft, BiTimer, BiLogInCircle, BiTimeFive, BiInfinite, BiMusic, BiSkipNext, BiMicrophone } from "react-icons/bi";
 import Title from "components/Title";
-import Menu from "components/Menu";
 import {
   playlistButton, playlistContainer, playlistCount, playlistDesc, playlistImage,
   playlistName, playlistTitle, refreshButton, textOverflow
 } from "styles/playlist.css";
 import { songArtist, songButton, songImage, songName } from "styles/song.css";
 import Image from "next/image";
-import ProgressBar from "../src/components/ProgressBar";
-import ControlPane from "../src/components/ControlPane";
+import ProgressBar from "components/ProgressBar";
+import ControlPane from "components/ControlPane";
 
 export const CLIENT_ID = "a70d66f34db04d7e86f52acc1615ec37"
 export const REDIRECT_URI = `${server}/`
 
-const initialTime = 15;
-const answersTime = 5;
+interface User {
+  name: string;
+  verified: boolean;
+}
 
 const getToken = async () => {
   const response = await fetch(`${server}/api/auth`);
@@ -50,19 +48,24 @@ const getPlaylists = async (username: string, token: string) => {
   let data: { items: Playlist[]; next: string | null; };
   let s = `https://api.spotify.com/v1/users/${username}/playlists`;
   const out = [];
-  do {
-    const res = await axios.get(s, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-      params: {
-        limit: 50,
-      }
-    })
-    data = res.data;
-    out.push(...data.items);
-    if (data.next) s = data.next;
-  } while (data.next);
+  try {
+    do {
+      const res = await axios.get(s, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        params: {
+          limit: 50,
+        }
+      })
+      data = res.data;
+      out.push(...data.items);
+      if (data.next) s = data.next;
+    } while (data.next);
+  }
+  catch (e) {
+    return [];
+  }
   return out;
 }
 
@@ -88,10 +91,40 @@ interface WordData {
   songs: Track[];
 }
 
+enum GAMEMODE {
+  NONE = "None",
+  STANDARD = "Standard",
+  BLITZ = "Blitz",
+  REHEARSAL = "Rehearsal",
+}
+
 enum GAMESTATE {
-  NOTHING = 0,
+  NONE = 0,
   GUESSING = 1,
   ANSWERS = 2,
+}
+
+interface GameState {
+  mode: GAMEMODE;
+  state: GAMESTATE;
+  activeWord: string;
+  history: string[];
+  timer: number;
+  paused: boolean;
+}
+const DEFAULT_GAME_STATE = {
+  state: 0,
+  mode: GAMEMODE.NONE,
+  history: [],
+  timer: -1,
+  activeWord: "",
+  paused: false,
+}
+
+export interface GameSettings {
+  initialTime: Record<GAMEMODE, number>;
+  wordLimit: Record<GAMEMODE, number>;
+  answersTime: number;
 }
 
 const App: NextPage = () => {
@@ -107,7 +140,8 @@ const App: NextPage = () => {
 
   const [failedSongs, setFailedSongs] = useState<Track[]>([]);
 
-  const [username, setUsername] = useState<string>("");
+  const [user, setUser] = useState<User>({ name: "", verified: false });
+  const [loginError, setLoginError] = useState<string>("");
   const [usernameSearch, setUsernameSearch] = useState<string>("")
 
   const [token, setToken] = useState<string>("");
@@ -120,14 +154,19 @@ const App: NextPage = () => {
 
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   useEffect(() => {
-    if (username) {
+    if (user.name) {
       setPlaylists([]);
-      getPlaylists(username, token).then(value => {
-        setPlaylists(value);
+      getPlaylists(user.name, token).then(value => {
+        if (value.length > 0) {
+          setUser({ name: user.name, verified: true });
+          setPlaylists(value);
+        } else {
+          setLoginError("Could not find user's playlists.")
+        }
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username])
+  }, [user.name])
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const getSongs = async (s: string) => {
@@ -178,31 +217,68 @@ const App: NextPage = () => {
     }
   };
 
-  const [activeWord, setActiveWord] = useState<string>("");
-  const [timer, setTimer] = useState<number>(0);
-  const [gameState, setGameState] = useState<GAMESTATE>(0);
-  const loadNextWord = useCallback(() => {
+  const [game, setGame] = useState<GameState>(DEFAULT_GAME_STATE);
+  const [settings, setSettings] = useState<GameSettings>({
+    initialTime: {
+      "None": -1,
+      "Standard": 15,
+      "Blitz": 120,
+      "Rehearsal": -1
+    },
+    wordLimit: {
+      "None": -1,
+      "Standard": 15,
+      "Blitz": -1,
+      "Rehearsal": -1
+    },
+    answersTime: 5
+  });
+  const getWord = () => {
     const words = Object.keys(procWords);
-    setActiveWord(words[words.length * Math.random() | 0]);
-    setTimer(initialTime);
-    setGameState(1);
-  }, [procWords])
-  const showAnswers = () => {
-    setGameState(2);
-    setTimer(answersTime);
-    console.log(procWords[activeWord].songs.map(track => track.name));
+    return words[words.length * Math.random() | 0];
   }
+  const initGame = (gameMode: GAMEMODE) => {
+    const cl = { ...game };
+    cl.activeWord = getWord();
+    cl.mode = gameMode;
+    cl.timer = settings.initialTime[gameMode];
+    // GUESSING
+    cl.state = 1;
+    setGame(cl);
+  }
+
+  const getNextWord = () => {
+    const cl = { ...game };
+    cl.activeWord = getWord();
+    cl.timer = settings.initialTime[cl.mode];
+    // GUESSING
+    cl.state = 1;
+    setGame(cl);
+  }
+
+  const showAnswers = () => {
+    const cl = { ...game };
+    cl.timer = settings.answersTime;
+    // SHOWING ANSWERS
+    cl.state = 2;
+    setGame(cl);
+    console.log(procWords[cl.activeWord].songs.map(track => track.name));
+  }
+
+  // GAME LOOP
   useEffect(() => {
     const interval = setTimeout(() => {
-      if (!activeWord || gameState === GAMESTATE.NOTHING) return;
-      setTimer(timer - 1)
-      if (timer === 0) {
-        switch (gameState) {
+      if (game.state === GAMESTATE.NONE) return;
+      const cl = { ...game };
+      cl.timer--;
+      setGame(cl);
+      if (cl.timer === 0) {
+        switch (cl.state) {
           case 1:
             showAnswers();
             break;
           case 2:
-            loadNextWord();
+            getNextWord();
             break;
           default:
             break;
@@ -211,13 +287,12 @@ const App: NextPage = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timer, activeWord, loadNextWord, showAnswers]);
+  }, [game]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist>();
-  const [selectedTrack, setSelectedTrack] = useState<Track>();
 
-  return <div className={username ? layout : loginLayout}>
+  return <div className={user.verified ? layout : loginLayout}>
     <Head>
       <title>Songb♪rd</title>
       <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -225,15 +300,15 @@ const App: NextPage = () => {
       <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
       <link rel="manifest" href="/manifest.json" />
     </Head>
-    <section className={username ? loggedInTitleContainer : titleContainer}>
+    <section className={user.verified ? loggedInTitleContainer : titleContainer}>
       <h1><Title /></h1>
     </section>
     <section className={loginContainer}>
-      {username
+      {user.verified
         ? <div className={spotifyLoggedIn}>
           <Image src="/img/spotify.svg" width={32} height={32} className={inlineIcon} alt="Spotify" />
           <div>
-            {username}
+            {user.name}
           </div>
           <button onClick={() => window.location.reload()} className={iconButton}>
             <BiLogOut size="24px" />
@@ -247,112 +322,160 @@ const App: NextPage = () => {
               className={iconButton}
               onClick={e => {
                 e.preventDefault();
-                setUsername(usernameSearch);
+                setUser({ name: usernameSearch, verified: false });
               }}
             >
               <BiLogInCircle size="32px" /></button>
           </label>
+          <div className={errorText}>{loginError}</div>
         </form>
       }
     </section>
-    <ControlPane />
-    {username && playlists &&
-      <>
-        <section className={playlistContainer}>
-          {!selectedPlaylist || !tracks
-            // Playlist has not yet been selected
-            ? <>
-              <div className={playlistTitle}>
-                <h2 className={textOverflow}>Playlists</h2>
-                <button onClick={() => getPlaylists(username, token)} className={refreshButton}>
-                  <BiRefresh size="24px" />
-                </button>
-              </div>
-              <div className={listContainer}>
-                {playlists.map(p => {
-                  const img = p.images[0];
-                  const playlistUrl = p.tracks.href;
-                  return <button key={playlistUrl} className={playlistButton} onClick={() => { setSelectedPlaylist(p); getSongs(playlistUrl); }}>
-                    <div className={playlistImage}>
-                      {img
-                        ? <img src={img.url} width="60px" height="60px" loading="lazy" alt="" />
-                        : <svg role="img" height="24" width="24" viewBox="0 0 24 24">
-                          <path
-                            d="M6 3h15v15.167a3.5 3.5 0 11-3.5-3.5H19V5H8v13.167a3.5 3.5 0 11-3.5-3.5H6V3zm0
+    <ControlPane settings={settings} setSettings={setSettings} />
+    {user.verified && playlists && <>
+      <section className={playlistContainer}>
+        {!selectedPlaylist || !tracks
+          // Playlist has not yet been selected
+          ? <>
+            <div className={playlistTitle}>
+              <h2 className={textOverflow}>Playlists</h2>
+              <button onClick={() => getPlaylists(user.name, token)} className={refreshButton}>
+                <BiRefresh size="24px" />
+              </button>
+            </div>
+            <div className={listContainer}>
+              {playlists.map(p => {
+                const img = p.images[0];
+                const playlistUrl = p.tracks.href;
+                return <button key={playlistUrl} className={playlistButton} onClick={() => { setSelectedPlaylist(p); getSongs(playlistUrl); }}>
+                  <div className={playlistImage}>
+                    {img
+                      ? <img src={img.url} width="60px" height="60px" loading="lazy" alt="" />
+                      : <svg role="img" height="24" width="24" viewBox="0 0 24 24">
+                        <path
+                          d="M6 3h15v15.167a3.5 3.5 0 11-3.5-3.5H19V5H8v13.167a3.5 3.5 0 11-3.5-3.5H6V3zm0
                               13.667H4.5a1.5 1.5 0 101.5 1.5v-1.5zm13 0h-1.5a1.5 1.5 0 101.5 1.5v-1.5z"
-                            fill="#aaaaaa"
-                          />
-                        </svg>
-                      }
-                    </div>
-                    <div className={playlistName}>{p.name}</div>
-                    <div className={playlistDesc}>
-                      {p.description}
-                    </div>
-                    <div className={playlistCount}>
-                      {p.tracks.total} songs
-                    </div>
-                  </button>
-                })}
-              </div>
-            </>
-            // Playlist has been selected
-            : <>
-              <div className={playlistTitle}>
-                <button className={iconButton} onClick={() => {
-                  setSelectedPlaylist(undefined);
-                  setTracks([]);
-                  setFailedSongs([]);
-                  setActiveWord("");
-                }}>
-                  <BiChevronLeft size="24px" />
+                          fill="#aaaaaa"
+                        />
+                      </svg>
+                    }
+                  </div>
+                  <div className={playlistName}>{p.name}</div>
+                  <div className={playlistDesc}>
+                    {p.description}
+                  </div>
+                  <div className={playlistCount}>
+                    {p.tracks.total} songs
+                  </div>
                 </button>
-                <h2 className={textOverflow}>{selectedPlaylist?.name ?? "Songs"}</h2>
-              </div>
-              <div className={listContainer}>
-                {tracks.filter(track => !!words[convertTrackToId(track)]).map((t, i) => {
-                  const imgSrc = t.album.images[0]?.url;
-                  const name = t.name;
-                  return <button key={i} className={songButton} onClick={() => setSelectedTrack(t)}>
-                    <img src={imgSrc} className={songImage} width="48px" height="48px" loading="lazy" alt="" />
-                    <div className={songName}>{name}</div>
-                    <div className={songArtist}>{t.artists.map(a => a.name).join(", ")}</div>
-                  </button>
-                })}
-              </div>
-              <ProgressBar
-                max={tracks.length}
-                value={Object.keys(words).length + failedSongs.length}
-              />
-            </>
+              })}
+            </div>
+          </>
+          // Playlist has been selected
+          : <>
+            <div className={playlistTitle}>
+              <button className={iconButton} onClick={() => {
+                setSelectedPlaylist(undefined);
+                setTracks([]);
+                setFailedSongs([]);
+                setGame(DEFAULT_GAME_STATE);
+              }}>
+                <BiChevronLeft size="24px" />
+              </button>
+              <h2 className={textOverflow}>{selectedPlaylist?.name ?? "Songs"}</h2>
+            </div>
+            <div className={listContainer}>
+              {tracks.filter(track => !!words[convertTrackToId(track)]).map((t, i) => {
+                const imgSrc = t.album.images[0]?.url;
+                const name = t.name;
+                return <div key={i} className={songButton}>
+                  <img src={imgSrc} className={songImage} width="48px" height="48px" loading="lazy" alt="" />
+                  <div className={songName}>{name}</div>
+                  <div className={songArtist}>{t.artists.map(a => a.name).join(", ")}</div>
+                </div>
+              })}
+            </div>
+            <ProgressBar
+              max={tracks.length}
+              value={Object.keys(words).length + failedSongs.length}
+            />
+          </>
+        }
+      </section>
+      {selectedPlaylist && <>
+        <section className={primary}>
+          {game.activeWord && game.mode !== GAMEMODE.REHEARSAL &&
+            <div className={timerContainer}>
+              <BiTimer size="36px" />
+              {game.timer}
+            </div>
           }
         </section>
-        {selectedPlaylist &&
-          <section className={primary}>
-            {!activeWord
-              ? <>
-                <button className={generateButton} disabled={tracks.length === 0} onClick={loadNextWord}>
-                  Start
-                </button>
-              </>
-              : <>
-                <div className={timerContainer}>
-                  <BiTimer size="24px" />
-                  {timer}
-                </div>
-                <div className={bigWord}>
-                  {activeWord.toLocaleUpperCase()}
-                </div>
-                <div className={controlsContainer}>
-                  <button className={generateButton} onClick={loadNextWord}>
-                    Next
-                  </button>
-                </div>
-              </>
-            }
+        {game.mode === GAMEMODE.NONE
+          ? <section className={secondary}>
+            <h3>Modes:</h3>
+            <button className={startButton} disabled={tracks.length === 0} onClick={() => initGame(GAMEMODE.STANDARD)}>
+              <BiMusic size="36px" className={startImg} />
+              <label className={startLabel}>Standard</label>
+              <div className={startDesc}>Test your knowledge!</div>
+            </button>
+            <button className={startButton} disabled={tracks.length === 0} onClick={() => initGame(GAMEMODE.BLITZ)}>
+              <BiTimeFive size="36px" className={startImg} />
+              <label className={startLabel}>Blitz</label>
+              <div className={startDesc}>Race against the clock!</div>
+            </button>
+            <button className={startButton} disabled={tracks.length === 0} onClick={() => initGame(GAMEMODE.REHEARSAL)}>
+              <BiInfinite size="36px" className={startImg} />
+              <label className={startLabel}>Rehearsal</label>
+              <div className={startDesc}>Hone your skills!</div>
+            </button>
           </section>
+          : <div className={gameArea}>
+            <div className={wordCount}>
+              Word {game.history.length + 1}
+            </div>
+            <div className={bigWord}>
+              {game.activeWord.toLocaleUpperCase()}
+            </div>
+            <div className={controlsContainer}>
+              {game.state === GAMESTATE.ANSWERS
+                ? <div className={listContainer}>
+                  {procWords[game.activeWord].songs.map((t, i) => {
+                    const imgSrc = t.album.images[0]?.url;
+                    const name = t.name;
+                    return <div key={i} className={songButton}>
+                      <img src={imgSrc} className={songImage} width="48px" height="48px" loading="lazy" alt="" />
+                      <div className={songName}>{name}</div>
+                      <div className={songArtist}>{t.artists.map(a => a.name).join(", ")}</div>
+                    </div>
+                  })}
+                </div>
+                : <>
+                  <button className={gameControlButton} onClick={showAnswers}>
+                    <BiSkipNext size="48px" />
+                    Skip
+                  </button>
+                  <button className={gameControlButton} onClick={getNextWord}>
+                    <BiMicrophone size="48px" />
+                    Done
+                  </button>
+                </>
+              }
+            </div>
+            <hr />
+            <div>
+              <button className={iconButton} onClick={() => {
+                setGame(DEFAULT_GAME_STATE);
+              }}>
+                <BiChevronLeft size="24px" />
+              </button>
+              {game.mode.toString()}
+            </div>
+          </div>
         }
       </>
+      }
+    </>
     }
   </div>
 }

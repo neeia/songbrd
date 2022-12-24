@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { BiCodeAlt, BiCog, BiHelpCircle } from "react-icons/bi";
-import { iconButton, settingsContainer } from "../styles/app.css";
+import { GameSettings } from "../../pages";
+import { iconButton, settingsContainer, textBox } from "../styles/app.css";
 import Menu from "./Menu";
 
-const ControlPane = () => {
+interface Props {
+  settings: GameSettings;
+  setSettings: (settings: GameSettings) => void;
+}
+const ControlPane = (props: Props) => {
+  const { settings: gameSettings, setSettings } = props;
 
   const [settings, openSettings] = useState(false);
   const closeSettings = () => openSettings(false);
@@ -29,6 +35,19 @@ const ControlPane = () => {
         then you lose that word. If you get your word out, then you earn a point. Once the game ends, you
         tally up all your points, and that&apos;s your score.
       </p>
+      <h3>What are the game modes?</h3>
+      <p>
+        <b>Standard Mode</b> is the original way to play. Each word has a short time limit,
+        and up to fifteen words are given. Score is given as a number out of fifteen.
+      </p>
+      <p>
+        <b>Blitz Mode</b> is a fast-paced round. Within the total time limit of two minutes,
+        you must answer as many words as possible. Score is given as a flat amount of points.
+      </p>
+      <p>
+        <b>Rehearsal Mode</b> is a casual, relaxed mode. In rehearsal mode, there is no time
+        or word limit. Score is given as a percentage of words answered.
+      </p>
       <h3>How does it work?</h3>
       <p>
         Once you link your Spotify account, you can choose a playlist to generate words from.
@@ -48,6 +67,21 @@ const ControlPane = () => {
       </button>
       Feedback
       Version
+      <section>
+        <h3>Game Modes</h3>
+        <h4>Standard</h4>
+        <label>
+          Word Count <input type="number" className={textBox} />
+        </label>
+        <label>
+          Timer <input type="number" className={textBox} />
+        </label>
+        <h4>Blitz</h4>
+        <label>
+          Timer <input type="number" className={textBox} />
+        </label>
+        <h4>Rehearsal</h4>
+      </section>
     </Menu>
     <a className={iconButton} href="https://github.com/neeia/songbrd" target="_blank" rel="noopener noreferrer">
       <BiCodeAlt size="32px" />

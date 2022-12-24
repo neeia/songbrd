@@ -1,7 +1,7 @@
 import { style } from "@vanilla-extract/css";
-import { iconButton } from "../styles/app.css";
+import { iconButton, scroller } from "../styles/app.css";
 
-export const menu = style({
+export const menu = style([scroller, {
   position: "fixed",
   left: 0,
   right: 0,
@@ -31,7 +31,7 @@ export const menu = style({
       visibility: "visible",
     }
   }
-})
+}])
 
 export const hideMenu = style([menu, {
   transform: "translate(0, 100vh)",
