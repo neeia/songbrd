@@ -48,11 +48,13 @@ export default async function fetchLyrics(
       .split(/\([Ff]rom/, 1)[0]
       .split(/-(.*)Remaster/, 1)[0]
       .split("- Single Version", 1)[0]
-      .split("- Bonus Track", 1)[0];
+      .split("- Bonus Track", 1)[0]
+      .trim();
     const cleanSongName = fbClean(songName);
 
     // Check if song is already indexed in db
     const docRef = doc(db, "artists", cleanSongArtist, "songs", cleanSongName);
+    const overrideRef = doc(db, "artists", cleanSongArtist, "overrides", cleanSongName);
     const warningRef = doc(db, "warnings", cleanSongArtist, "songs", cleanSongName);
     const failRef = doc(db, "failures", cleanSongArtist, "songs", cleanSongName);
 
@@ -83,46 +85,52 @@ export default async function fetchLyrics(
     let hitSongName = "";
     let hitSongArtist = "";
 
-    // Loop through search results
-    for (const hitResult of hits) {
-      const hitSong = await axios.get(`https://api.genius.com/songs/${hitResult.result.id}`, {
-        headers: {
-          Authorization: `Bearer ${process.env.GENIUS_ACCESS_TOKEN}`
-        },
-      });
+    const checkOverride = await getDoc(overrideRef)
+    if (checkOverride.exists()) {
+      songUrl = checkOverride.data().url;
+    }
+    else {
+      // Loop through search results
+      for (const hitResult of hits) {
+        const hitSong = await axios.get(`https://api.genius.com/songs/${hitResult.result.id}`, {
+          headers: {
+            Authorization: `Bearer ${process.env.GENIUS_ACCESS_TOKEN}`
+          },
+        });
 
-      const song = hitSong.data.response.song;
-      const songRelationships: {
-        relationship_type: string;
-        songs: {
-          language: string;
-          url: string;
-          title: string;
-          primary_artist: { name: string }
-        }[]
-      }[] = song.song_relationships;
-      const translationOf = songRelationships.find(el => el.relationship_type === "translation_of");
-      hitSongName = song.title;
-      hitSongArtist = song.primary_artist.name;
-      if (hitSongArtist === "Spotify") continue;
+        const song = hitSong.data.response.song;
+        const songRelationships: {
+          relationship_type: string;
+          songs: {
+            language: string;
+            url: string;
+            title: string;
+            primary_artist: { name: string }
+          }[]
+        }[] = song.song_relationships;
+        const translationOf = songRelationships.find(el => el.relationship_type === "translation_of");
+        hitSongName = song.title;
+        hitSongArtist = song.primary_artist.name;
+        if (hitSongArtist === "Spotify") continue;
 
-      // Check if song is a translation of another song
-      if (translationOf && translationOf.songs.length > 0) {
-        // If it is, then make sure the other song is in English
-        const originalSong = translationOf.songs[0];
-        if (originalSong.language === "en") {
-          hitSongName = originalSong.title;
-          hitSongArtist = originalSong.primary_artist.name;
-          songUrl = originalSong.url;
+        // Check if song is a translation of another song
+        if (translationOf && translationOf.songs.length > 0) {
+          // If it is, then make sure the other song is in English
+          const originalSong = translationOf.songs[0];
+          if (originalSong.language === "en") {
+            hitSongName = originalSong.title;
+            hitSongArtist = originalSong.primary_artist.name;
+            songUrl = originalSong.url;
+          }
         }
-      }
-      else {
-        // Otherwise, make sure our own song is in English
-        if (song.language === "en") songUrl = song.url;
-      }
+        else {
+          // Otherwise, make sure our own song is in English
+          if (song.language === "en") songUrl = song.url;
+        }
 
-      // If we have a valid url, we're done
-      if (songUrl) break;
+        // If we have a valid url, we're done
+        if (songUrl) break;
+      }
     }
 
     // If we've gone through the entire array without hitting a good url, then give up
