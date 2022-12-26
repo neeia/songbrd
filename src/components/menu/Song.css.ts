@@ -1,5 +1,5 @@
 import { style } from '@vanilla-extract/css';
-import { ellipsisText, listButton } from './app.css';
+import { ellipsisText, listButton } from 'styles/app.css';
 
 export const songContainer = style({
   gridArea: "playlist",
@@ -13,6 +13,7 @@ export const songListItem = style({
   backgroundColor: "transparent",
   border: 0,
   padding: "8px",
+  width: "100%"
 })
 export const songButton = style([listButton, songListItem])
 export const songImage = style({

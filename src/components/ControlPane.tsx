@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BiCodeAlt, BiCog, BiHelpCircle } from "react-icons/bi";
-import { GameSettings } from "../../pages";
-import { iconButton, settingsContainer, textBox } from "../styles/app.css";
+import { iconButton, settingsContainer, textBox } from "styles/app.css";
+import { GameSettings } from "types/game";
 import Menu from "./Menu";
 
 interface Props {

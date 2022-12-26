@@ -1,6 +1,7 @@
 import FocusTrap from "focus-trap-react";
 import { useEffect } from "react";
 import { BiX } from "react-icons/bi";
+import { scroller } from "../styles/app.css";
 import { closeButton, hideMenu, menu, menuHeader, showMenu } from "./Menu.css";
 
 interface Props {
@@ -16,7 +17,7 @@ const Menu = (props: Props) => {
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
         onClose();
-      } 
+      }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -29,7 +30,9 @@ const Menu = (props: Props) => {
           <BiX fontSize="36px" />
         </button>
       </div>
-      {children}
+      <div className={scroller}>
+        {children}
+      </div>
     </dialog>
   </FocusTrap>
 }

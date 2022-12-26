@@ -1,26 +1,30 @@
 ﻿import type { NextPage } from "next";
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Playlist, SpotifyUser, Track } from "types/playlist";
+import { Playlist, Track } from "types/playlist";
 import { server } from "config/index";
 import {
-  layout, loginContainer, titleContainer, iconButton, spotifyLoggedIn,
-  loginLayout, inlineIcon, settingsContainer, loggedInTitleContainer,
-  listContainer, primary, secondary, gameButton, bigWord, timerContainer,
-  controlsContainer, spotifyLogin, usernameSearchBox, startButton, startImg, startLabel, startDesc, errorText, gameArea, wordCount, gameControlButton
+  layout, titleContainer, iconButton,
+  loginLayout, loggedInTitleContainer,
+  listContainer, primary, secondary, timerContainer,
+  startButton, startImg, startLabel, startDesc, menuButton,
+  playlistContainer, playlistTitle, refreshButton, gameArea, utilContainer
 } from "styles/app.css";
 import { convertTrackToId } from "util/track";
 import Head from "next/head";
-import { BiRefresh, BiLogOut, BiChevronLeft, BiTimer, BiLogInCircle, BiTimeFive, BiInfinite, BiMusic, BiSkipNext, BiMicrophone } from "react-icons/bi";
+import { BiRefresh, BiChevronLeft, BiTimer, BiTimeFive, BiInfinite, BiMusic, BiMenu } from "react-icons/bi";
 import Title from "components/Title";
-import {
-  playlistButton, playlistContainer, playlistCount, playlistDesc, playlistImage,
-  playlistName, playlistTitle, refreshButton, textOverflow
-} from "styles/playlist.css";
-import { songArtist, songButton, songImage, songName } from "styles/song.css";
-import Image from "next/image";
-import ProgressBar from "components/ProgressBar";
 import ControlPane from "components/ControlPane";
+import useWindowSize from "util/useWindowSize";
+import SpotifyLogin from "components/app/SpotifyLogin";
+import SongList from "components/menu/SongList";
+import Song from "components/menu/Song";
+import { mobileAppBar, mobileLayout, mobileContainer } from "styles/mobile.css";
+import { DEFAULT_STATE, GameSettings, GameState, Lyrics, Mode, State, WordData } from "types/game";
+import Game from "components/game/Game";
+import PlaylistList from "components/menu/PlaylistList";
+import { textOverflow } from "components/menu/playlist.css";
+import SpotifyLoggedIn from "components/app/SpotifyLoggedIn";
 
 export const CLIENT_ID = "a70d66f34db04d7e86f52acc1615ec37"
 export const REDIRECT_URI = `${server}/`
@@ -73,7 +77,7 @@ const processWords = (words: Record<string, Lyrics>) => {
   const out: Record<string, WordData> = {};
   Object.values(words).forEach(lyrics => {
     Object.keys(lyrics.words).forEach(word => {
-      out[word] ??= { frequency: 0, songs: [] };
+      out[word] ??= { word, frequency: 0, songs: [] };
       out[word].frequency += 1;
       out[word].songs.push(lyrics.song);
     })
@@ -81,53 +85,16 @@ const processWords = (words: Record<string, Lyrics>) => {
   return out;
 }
 
-interface Lyrics {
-  song: Track;
-  words: Record<string, number>
-}
-
-interface WordData {
-  frequency: number;
-  songs: Track[];
-}
-
-enum GAMEMODE {
-  NONE = "None",
-  STANDARD = "Standard",
-  BLITZ = "Blitz",
-  REHEARSAL = "Rehearsal",
-}
-
-enum GAMESTATE {
-  NONE = 0,
-  GUESSING = 1,
-  ANSWERS = 2,
-}
-
-interface GameState {
-  mode: GAMEMODE;
-  state: GAMESTATE;
-  activeWord: string;
-  history: string[];
-  timer: number;
-  paused: boolean;
-}
-const DEFAULT_GAME_STATE = {
-  state: 0,
-  mode: GAMEMODE.NONE,
-  history: [],
-  timer: -1,
-  activeWord: "",
-  paused: false,
-}
-
-export interface GameSettings {
-  initialTime: Record<GAMEMODE, number>;
-  wordLimit: Record<GAMEMODE, number>;
-  answersTime: number;
+enum AppState {
+  LOGIN = "Login",
+  PLAYLIST = "Playlist",
+  SONG = "Song",
+  GAME = "Game",
 }
 
 const App: NextPage = () => {
+  const [controller] = useState(new AbortController());
+
   // song => word => frequency
   const [words, setWords] = useState<Record<string, Lyrics>>({});
 
@@ -142,13 +109,18 @@ const App: NextPage = () => {
 
   const [user, setUser] = useState<User>({ name: "", verified: false });
   const [loginError, setLoginError] = useState<string>("");
-  const [usernameSearch, setUsernameSearch] = useState<string>("")
 
   const [token, setToken] = useState<string>("");
   useEffect(() => {
     getToken().then(value => {
       setToken(value.access_token);
     })
+    const interval = setInterval(() => {
+      getToken().then(value => {
+        setToken(value.access_token);
+      })
+    }, 1800000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -160,6 +132,7 @@ const App: NextPage = () => {
         if (value.length > 0) {
           setUser({ name: user.name, verified: true });
           setPlaylists(value);
+          setState(AppState.PLAYLIST)
         } else {
           setLoginError("Could not find user's playlists.")
         }
@@ -173,6 +146,7 @@ const App: NextPage = () => {
     setWords({});
     setTracks([]);
     setFailedSongs([]);
+    setState(AppState.SONG)
     let data: { items: any[]; next: string | null; };
     let items: Track[] = [];
     do {
@@ -190,21 +164,21 @@ const App: NextPage = () => {
       if (data.next) s = data.next;
     } while (data.next);
 
+    const out: Record<string, Lyrics> = {};
+
     setTracks(items);
-    items.forEach((track: Track) => {
-      getSong(track).then(res => {
-        if (res) setWords(oldWords => {
-          const newWords = { ...oldWords };
-          newWords[convertTrackToId(track)] = { song: track, words: res.lyrics };
-          return newWords;
-        })
-        else setFailedSongs(fs => [...fs, track]);
-      })
-    });
+    await Promise.all(items.map(async (track: Track) => {
+      const res = await getSong(track);
+      if (res) out[convertTrackToId(track)] = { song: track, words: res.lyrics };
+      else setFailedSongs(fs => [...fs, track]);
+    }));
+    setWords(out);
   }
 
   const getSong = async (s: Track) => {
-    const response = await fetch(`${server}/api/fetchLyrics?${new URLSearchParams({ name: s.name, artist: s.artists[0].name })}`);
+    const response = await fetch(`${server}/api/fetchLyrics?${new URLSearchParams({ name: s.name, artist: s.artists[0].name })}`, {
+      signal: controller.signal,
+    });
 
     if (!response.ok) {
       throw new Error(`Error: ${response.status}`);
@@ -217,7 +191,9 @@ const App: NextPage = () => {
     }
   };
 
-  const [game, setGame] = useState<GameState>(DEFAULT_GAME_STATE);
+  const [game, setGame] = useState<State>(DEFAULT_STATE);
+  const [timer, setTimer] = useState<number>(-1);
+  const [state, setState] = useState<AppState>(AppState.LOGIN);
   const [settings, setSettings] = useState<GameSettings>({
     initialTime: {
       "None": -1,
@@ -234,53 +210,79 @@ const App: NextPage = () => {
     answersTime: 5
   });
   const getWord = () => {
-    const words = Object.keys(procWords);
+    const words = Object.values(procWords)
+      .filter(word => !(
+        word.word.length < 3 || game.history.find(w => w.word === word)
+      ));
+
     return words[words.length * Math.random() | 0];
   }
-  const initGame = (gameMode: GAMEMODE) => {
+  const initGame = (gameMode: Mode) => {
     const cl = { ...game };
     cl.activeWord = getWord();
     cl.mode = gameMode;
-    cl.timer = settings.initialTime[gameMode];
+    cl.history = [];
+    setTimer(settings.initialTime[gameMode]);
     // GUESSING
-    cl.state = 1;
+    cl.state = GameState.GUESSING;
     setGame(cl);
+    setState(AppState.GAME);
   }
 
-  const getNextWord = () => {
+  const getNextWord = (success?: boolean) => {
     const cl = { ...game };
-    cl.activeWord = getWord();
-    cl.timer = settings.initialTime[cl.mode];
-    // GUESSING
-    cl.state = 1;
-    setGame(cl);
+    cl.history.push({ word: game.activeWord, solved: !!success });
+    if (cl.history.length === settings.wordLimit[game.mode]) {
+      // Game Over
+      endGame();
+    }
+    else {
+      // GUESSING
+      cl.state = GameState.GUESSING;
+      cl.activeWord = getWord();
+      if (game.mode !== Mode.BLITZ) setTimer(settings.initialTime[game.mode]);
+      setGame(cl);
+    }
   }
 
   const showAnswers = () => {
+    if (game.state === GameState.ANSWERS) {
+      getNextWord();
+    }
+    else {
+      const cl = { ...game };
+      if (game.mode !== Mode.BLITZ) setTimer(settings.answersTime);
+      // SHOWING ANSWERS
+      cl.state = GameState.ANSWERS;
+      setGame(cl);
+    }
+  }
+
+  const endGame = () => {
     const cl = { ...game };
-    cl.timer = settings.answersTime;
-    // SHOWING ANSWERS
-    cl.state = 2;
+    setTimer(-1);
+    cl.activeWord = { word: "", frequency: 0, songs: [] };
+    // GAME OVER
+    cl.state = GameState.END;
     setGame(cl);
-    console.log(procWords[cl.activeWord].songs.map(track => track.name));
   }
 
   // GAME LOOP
   useEffect(() => {
     const interval = setTimeout(() => {
-      if (game.state === GAMESTATE.NONE) return;
+      if (game.state !== GameState.GUESSING && game.state !== GameState.ANSWERS) return;
       const cl = { ...game };
-      cl.timer--;
+      if (game.mode === Mode.REHEARSAL) return;
+      setTimer(timer - 1);
       setGame(cl);
-      if (cl.timer === 0) {
-        switch (cl.state) {
-          case 1:
-            showAnswers();
+      if (timer === 0) {
+        switch (cl.mode) {
+          case Mode.STANDARD:
+            if (cl.state === GameState.GUESSING) showAnswers();
+            else getNextWord();
             break;
-          case 2:
-            getNextWord();
-            break;
-          default:
+          case Mode.BLITZ:
+            endGame();
             break;
         }
       }
@@ -291,8 +293,95 @@ const App: NextPage = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist>();
+  const size = useWindowSize();
+  const mobile = size.width && size.width <= 768;
 
-  return <div className={user.verified ? layout : loginLayout}>
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const GameTimer = () =>
+    <div className={timerContainer}>
+      <BiTimer size="36px" />
+      {timer}
+    </div>
+
+  const GameModeSelector = () => <>
+    <h3>Modes:</h3>
+    <button className={startButton} disabled={Object.keys(procWords).length === 0} onClick={() => initGame(Mode.STANDARD)}>
+      <BiMusic size="36px" className={startImg} />
+      <label className={startLabel}>Standard</label>
+      <div className={startDesc}>Test your knowledge!</div>
+    </button>
+    <button className={startButton} disabled={Object.keys(procWords).length === 0} onClick={() => initGame(Mode.BLITZ)}>
+      <BiTimeFive size="36px" className={startImg} />
+      <label className={startLabel}>Blitz</label>
+      <div className={startDesc}>Race against the clock!</div>
+    </button>
+    <button className={startButton} disabled={Object.keys(procWords).length === 0} onClick={() => initGame(Mode.REHEARSAL)}>
+      <BiInfinite size="36px" className={startImg} />
+      <label className={startLabel}>Rehearsal</label>
+      <div className={startDesc}>Hone your skills!</div>
+    </button>
+  </>
+
+  const MobileHeader = () => {
+    switch (state) {
+      case AppState.PLAYLIST:
+        return <> <h2 className={textOverflow}>Playlists</h2>
+          <button onClick={() => getPlaylists(user.name, token)} className={iconButton}>
+            <BiRefresh size="24px" />
+          </button>
+        </>;
+      case AppState.SONG:
+        return <h2 className={textOverflow}>{selectedPlaylist!.name}</h2>
+      case AppState.GAME:
+        switch (game.state) {
+          case GameState.GUESSING:
+          case GameState.ANSWERS:
+            if (game.mode !== Mode.REHEARSAL) return <GameTimer />
+            else return null;
+          case GameState.END:
+            return null
+          case GameState.REVIEW:
+            return <h2>History</h2>;
+          default:
+            return null;
+        }
+      default:
+        return null;
+    }
+  }
+
+  const handleBack = () => {
+    if (state === AppState.GAME) {
+      // In Game
+      setGame(DEFAULT_STATE)
+      setState(AppState.SONG)
+    }
+    else {
+      setSelectedPlaylist(undefined);
+      setTracks([]);
+      setFailedSongs([]);
+      setGame(DEFAULT_STATE);
+      setState(AppState.PLAYLIST)
+    }
+  }
+
+  const gameObj = <Game game={game}
+    settings={settings}
+    getWord={() => getNextWord(true)}
+    skipWord={showAnswers}
+    endGame={endGame}
+    exit={() => {
+      setState(AppState.SONG);
+      setGame(DEFAULT_STATE);
+    }}
+    review={() => {
+      setGame({ ...game, state: GameState.REVIEW });
+    }}
+    restart={() => initGame(game.mode)}
+  />
+
+  return <div>
     <Head>
       <title>Songb♪rd</title>
       <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -300,182 +389,122 @@ const App: NextPage = () => {
       <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
       <link rel="manifest" href="/manifest.json" />
     </Head>
-    <section className={user.verified ? loggedInTitleContainer : titleContainer}>
-      <h1><Title /></h1>
-    </section>
-    <section className={loginContainer}>
-      {user.verified
-        ? <div className={spotifyLoggedIn}>
-          <Image src="/img/spotify.svg" width={32} height={32} className={inlineIcon} alt="Spotify" />
-          <div>
-            {user.name}
-          </div>
-          <button onClick={() => window.location.reload()} className={iconButton}>
-            <BiLogOut size="24px" />
-          </button>
-        </div>
-        : <form>
-          <label className={spotifyLogin}>
-            <Image src="/img/spotify.svg" width={32} height={32} className={inlineIcon} alt="Spotify" /> ID:
-            <input value={usernameSearch} className={usernameSearchBox} onChange={e => setUsernameSearch(e.target.value)} />
-            <button type="submit"
-              className={iconButton}
-              onClick={e => {
-                e.preventDefault();
-                setUser({ name: usernameSearch, verified: false });
-              }}
-            >
-              <BiLogInCircle size="32px" /></button>
-          </label>
-          <div className={errorText}>{loginError}</div>
-        </form>
-      }
-    </section>
-    <ControlPane settings={settings} setSettings={setSettings} />
-    {user.verified && playlists && <>
-      <section className={playlistContainer}>
-        {!selectedPlaylist || !tracks
-          // Playlist has not yet been selected
-          ? <>
-            <div className={playlistTitle}>
-              <h2 className={textOverflow}>Playlists</h2>
-              <button onClick={() => getPlaylists(user.name, token)} className={refreshButton}>
-                <BiRefresh size="24px" />
-              </button>
-            </div>
-            <div className={listContainer}>
-              {playlists.map(p => {
-                const img = p.images[0];
-                const playlistUrl = p.tracks.href;
-                return <button key={playlistUrl} className={playlistButton} onClick={() => { setSelectedPlaylist(p); getSongs(playlistUrl); }}>
-                  <div className={playlistImage}>
-                    {img
-                      ? <img src={img.url} width="60px" height="60px" loading="lazy" alt="" />
-                      : <svg role="img" height="24" width="24" viewBox="0 0 24 24">
-                        <path
-                          d="M6 3h15v15.167a3.5 3.5 0 11-3.5-3.5H19V5H8v13.167a3.5 3.5 0 11-3.5-3.5H6V3zm0
-                              13.667H4.5a1.5 1.5 0 101.5 1.5v-1.5zm13 0h-1.5a1.5 1.5 0 101.5 1.5v-1.5z"
-                          fill="#aaaaaa"
-                        />
-                      </svg>
-                    }
-                  </div>
-                  <div className={playlistName}>{p.name}</div>
-                  <div className={playlistDesc}>
-                    {p.description}
-                  </div>
-                  <div className={playlistCount}>
-                    {p.tracks.total} songs
-                  </div>
-                </button>
-              })}
-            </div>
-          </>
-          // Playlist has been selected
-          : <>
-            <div className={playlistTitle}>
-              <button className={iconButton} onClick={() => {
-                setSelectedPlaylist(undefined);
-                setTracks([]);
-                setFailedSongs([]);
-                setGame(DEFAULT_GAME_STATE);
-              }}>
-                <BiChevronLeft size="24px" />
-              </button>
-              <h2 className={textOverflow}>{selectedPlaylist?.name ?? "Songs"}</h2>
-            </div>
-            <div className={listContainer}>
-              {tracks.filter(track => !!words[convertTrackToId(track)]).map((t, i) => {
-                const imgSrc = t.album.images[0]?.url;
-                const name = t.name;
-                return <div key={i} className={songButton}>
-                  <img src={imgSrc} className={songImage} width="48px" height="48px" loading="lazy" alt="" />
-                  <div className={songName}>{name}</div>
-                  <div className={songArtist}>{t.artists.map(a => a.name).join(", ")}</div>
-                </div>
-              })}
-            </div>
-            <ProgressBar
-              max={tracks.length}
-              value={Object.keys(words).length + failedSongs.length}
-            />
-          </>
-        }
-      </section>
-      {selectedPlaylist && <>
-        <section className={primary}>
-          {game.activeWord && game.mode !== GAMEMODE.REHEARSAL &&
-            <div className={timerContainer}>
-              <BiTimer size="36px" />
-              {game.timer}
-            </div>
-          }
+    {!mobile
+      ? //Desktop Version
+      <div className={user.verified ? layout : loginLayout}>
+        <section className={user.verified ? loggedInTitleContainer : titleContainer}>
+          <h1><Title /></h1>
         </section>
-        {game.mode === GAMEMODE.NONE
-          ? <section className={secondary}>
-            <h3>Modes:</h3>
-            <button className={startButton} disabled={tracks.length === 0} onClick={() => initGame(GAMEMODE.STANDARD)}>
-              <BiMusic size="36px" className={startImg} />
-              <label className={startLabel}>Standard</label>
-              <div className={startDesc}>Test your knowledge!</div>
-            </button>
-            <button className={startButton} disabled={tracks.length === 0} onClick={() => initGame(GAMEMODE.BLITZ)}>
-              <BiTimeFive size="36px" className={startImg} />
-              <label className={startLabel}>Blitz</label>
-              <div className={startDesc}>Race against the clock!</div>
-            </button>
-            <button className={startButton} disabled={tracks.length === 0} onClick={() => initGame(GAMEMODE.REHEARSAL)}>
-              <BiInfinite size="36px" className={startImg} />
-              <label className={startLabel}>Rehearsal</label>
-              <div className={startDesc}>Hone your skills!</div>
-            </button>
-          </section>
-          : <div className={gameArea}>
-            <div className={wordCount}>
-              Word {game.history.length + 1}
-            </div>
-            <div className={bigWord}>
-              {game.activeWord.toLocaleUpperCase()}
-            </div>
-            <div className={controlsContainer}>
-              {game.state === GAMESTATE.ANSWERS
-                ? <div className={listContainer}>
-                  {procWords[game.activeWord].songs.map((t, i) => {
-                    const imgSrc = t.album.images[0]?.url;
-                    const name = t.name;
-                    return <div key={i} className={songButton}>
-                      <img src={imgSrc} className={songImage} width="48px" height="48px" loading="lazy" alt="" />
-                      <div className={songName}>{name}</div>
-                      <div className={songArtist}>{t.artists.map(a => a.name).join(", ")}</div>
-                    </div>
-                  })}
+        <section className={utilContainer}>
+          {user.verified
+            ? <SpotifyLoggedIn username={user.name} />
+            : <SpotifyLogin onSubmit={(name: string) => setUser({ name, verified: false })} error={loginError} />
+          }
+          <ControlPane settings={settings} setSettings={setSettings} />
+        </section>
+        {user.verified && playlists && <>
+          <section className={playlistContainer}>
+            {!selectedPlaylist || !tracks
+              // Playlist has not yet been selected
+              ? <>
+                <div className={playlistTitle}>
+                  <h2 className={textOverflow}>Playlists</h2>
+                  <button onClick={() => getPlaylists(user.name, token)} className={refreshButton}>
+                    <BiRefresh size="24px" />
+                  </button>
+                  <button onClick={() => console.log("open the menu!")} className={menuButton}>
+                    <BiMenu size="24px" />
+                  </button>
                 </div>
-                : <>
-                  <button className={gameControlButton} onClick={showAnswers}>
-                    <BiSkipNext size="48px" />
-                    Skip
-                  </button>
-                  <button className={gameControlButton} onClick={getNextWord}>
-                    <BiMicrophone size="48px" />
-                    Done
-                  </button>
-                </>
+                <PlaylistList playlists={playlists} onClick={(p) => { setSelectedPlaylist(p); getSongs(p.tracks.href); }} />
+              </>
+              // Playlist has been selected
+              : <SongList
+                name={selectedPlaylist.name}
+                tracks={tracks.filter(track => !!words[convertTrackToId(track)])}
+                onExit={() => {
+                  controller.abort();
+                  setSelectedPlaylist(undefined);
+                  setTracks([]);
+                  setFailedSongs([]);
+                  setGame(DEFAULT_STATE);
+                }}
+              />
+            }
+          </section>
+          {selectedPlaylist && <>
+            <section className={primary}>
+              {state === AppState.GAME && game.mode !== Mode.REHEARSAL && timer > 0 &&
+                <GameTimer />
               }
-            </div>
-            <hr />
-            <div>
-              <button className={iconButton} onClick={() => {
-                setGame(DEFAULT_GAME_STATE);
-              }}>
-                <BiChevronLeft size="24px" />
+              {game.state === GameState.REVIEW &&
+                <h2>
+                  <button className={iconButton} onClick={handleBack}>
+                    <BiChevronLeft size="24px" />
+                  </button>
+                  History
+                </h2>
+              }
+            </section>
+            {game.mode === Mode.NONE
+              ? <section className={secondary}>
+                <GameModeSelector />
+              </section>
+              : <div className={gameArea}>
+                {gameObj}
+              </div>
+            }
+          </>
+          }
+        </>}
+      </div>
+      : // Mobile Version
+      <>
+        {!(user.verified && playlists)
+          ? // Login
+          <>
+            <section className={titleContainer}>
+              <h1><Title /></h1>
+            </section>
+            <section>
+              <SpotifyLogin onSubmit={(name: string) => setUser({ name, verified: false })} error={loginError} />
+              <ControlPane settings={settings} setSettings={setSettings} />
+            </section>
+          </>
+          : // Game
+          <section className={mobileLayout}>
+            <div className={mobileAppBar}>
+              {selectedPlaylist &&
+                <button className={iconButton} onClick={handleBack}>
+                  <BiChevronLeft size="24px" />
+                </button>
+              }
+              <MobileHeader />
+              <button onClick={() => console.log("open the menu!")} className={menuButton}>
+                <BiMenu size="24px" />
               </button>
-              {game.mode.toString()}
             </div>
-          </div>
+            <section className={mobileContainer}>
+              {!selectedPlaylist || !tracks
+                // Playlist has not yet been selected
+                ? <PlaylistList playlists={playlists} onClick={(p) => { setSelectedPlaylist(p); getSongs(p.tracks.href); }} />
+                // Playlist has been selected
+                : game.mode === Mode.NONE
+                  // Not in game
+                  ? <>
+                    <GameModeSelector />
+                    <h3>Tracks:</h3>
+                    <div className={listContainer}>
+                      {tracks.map((t, i) => <Song track={t} key={i} />)}
+                    </div>
+                  </>
+                  // In a game
+                  : <>{gameObj}</>
+              }
+            </section>
+          </section>
         }
       </>
-      }
-    </>
     }
   </div>
 }

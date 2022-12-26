@@ -3,16 +3,22 @@ import { style } from "@vanilla-extract/css";
 const main = style({
   width: "100vw",
   height: "100vh",
-  backgroundColor: "#121212",
-  padding: "1rem",
   boxSizing: "border-box",
   marginLeft: "auto",
   marginRight: "auto",
   boxShadow: "0px 0px 36px 4px #000",
+  "@media": {
+    "screen and (min-width: 769px)": {
+      padding: "1rem",
+    },
+    "screen and (min-width: 1200px)": {
+      padding: "1rem",
+    },
+  }
 })
 
 export const scroller = style({
-  maxHeight: "calc(100% - 40px)",
+  maxHeight: "100%",
   overflowY: "auto",
   scrollbarColor: "rgba(155, 155, 155, 0.5)",
   scrollbarWidth: "thin",
@@ -28,14 +34,25 @@ export const scroller = style({
   },
 })
 
+export const mobileHidden = style({
+  "@media": {
+    "screen and (max-width: 768px)": {
+      display: "none"
+    },
+  }
+})
 export const listContainer = style([scroller, {
   display: "flex",
   flexDirection: "column",
 }])
+export const inlineContainer = style([scroller, {
+  display: "block",
+  textAlign: "justify",
+}])
 
 export const loginLayout = style([main, {
   display: "grid",
-  gridTemplateAreas: `"title" "auth" "settings"`,
+  gridTemplateAreas: `"title" "cfg"`,
   gridTemplateRows: "40vh auto auto 1fr",
   alignItems: "end",
   justifyContent: "center",
@@ -48,7 +65,7 @@ export const titleContainer = style({
   fontSize: 36,
   padding: 16,
   "@media": {
-    "screen and (min-width: 768px)": {
+    "screen and (min-width: 769px)": {
       fontSize: 48,
     },
     "screen and (min-width: 1200px)": {
@@ -61,7 +78,7 @@ export const loggedInTitleContainer = style([titleContainer, {
   fontSize: 12,
   padding: 16,
   "@media": {
-    "screen and (min-width: 768px)": {
+    "screen and (min-width: 769px)": {
       fontSize: 16,
     },
     "screen and (min-width: 1200px)": {
@@ -80,65 +97,66 @@ export const textBox = style({
   borderRadius: 2,
 })
 
-export const loginContainer = style({
-  gridArea: "auth",
-})
-export const spotifyLogin = style({
-  display: "inline-flex",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: "0.5ch",
-  color: "#1ED760",
-  fontSize: 20,
-  fontWeight: 500,
-  "@media": {
-    "screen and (min-width: 768px)": {
-      fontSize: 24,
-    },
-    "screen and (min-width: 1200px)": {
-      fontSize: 28,
-    },
-  }
-})
-export const usernameSearchBox = style([textBox, {
-  width: "20ch",
-  fontSize: "0.9em",
-  padding: 4,
-}])
-export const errorText = style({
-  color: "rgb(255, 40, 40)",
-})
-export const spotifyLoggedIn = style({
-  display: "grid",
-  gridTemplateColumns: "min-content 1fr auto",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: "0.5ch",
-  width: "100%",
-  height: "100%",
-  fontSize: 24,
-  fontWeight: 500,
-})
 export const settingsContainer = style({
-  gridArea: "settings",
   display: "flex",
   marginTop: 6,
   gap: 4,
+  justifyContent: "center",
 })
 
-
+export const utilContainer = style({
+  gridArea: "cfg",
+})
 
 export const layout = style([main, {
   display: "grid",
-  gridTemplateAreas: `"title content auth"
-                      "title content settings"
+  gridTemplateAreas: `"title content cfg"
                       "playlist secondary tertiary"`,
-  gridTemplateRows: "min-content min-content minmax(0, 100%)",
+  gridTemplateRows: "min-content minmax(0, 100%)",
   gridTemplateColumns: "auto 1fr auto",
   gap: "0px 1rem",
   justifyContent: "center",
   justifyItems: "center",
+  "@media": {
+    "screen and (max-width: 768px)": {
+      gridTemplateAreas: "none",
+      gridTemplateRows: "100%",
+      gridTemplateColumns: "100%"
+    },
+  }
 }])
+
+export const playlistContainer = style({
+  maxHeight: "100%",
+  borderBottom: "8px solid #8c4ed7",
+  position: "relative",
+  gridArea: "playlist",
+  borderRadius: "0px 0px 8px 0px",
+  display: "grid",
+  gridTemplateRows: "40px 1fr",
+  gridTemplateColumns: "100%",
+  width: "100%",
+  "@media": {
+    "screen and (min-width: 769px)": {
+      maxWidth: "30ch",
+    },
+    "screen and (min-width: 1200px)": {
+      maxWidth: "40ch",
+    },
+  }
+})
+export const playlistTitle = style({
+  backgroundColor: "#8c4ed7",
+  display: "flex",
+  "@media": {
+    "screen and (min-width: 769px)": {
+      borderRadius: "0px 8px 0px 0px",
+    },
+    "screen and (min-width: 1200px)": {
+      borderRadius: "0px 8px 0px 0px",
+    },
+  }
+})
 
 export const listButton = style({
   backgroundColor: "transparent",
@@ -149,6 +167,9 @@ export const listButton = style({
     cursor: "pointer",
   }
 })
+export const inlineButton = style([listButton, {
+  display: "inline",
+}])
 export const iconButton = style([listButton, {
   height: "min-content",
   width: "min-content",
@@ -158,6 +179,18 @@ export const iconButton = style([listButton, {
     "a.&": {
       color: "unset",
     }
+  }
+}])
+export const refreshButton = style([iconButton, {
+  marginLeft: "auto",
+}])
+
+export const menuButton = style([iconButton, {
+  marginLeft: "auto",
+  "@media": {
+    "screen and (min-width: 769px)": {
+      display: "none"
+    },
   }
 }])
 
@@ -173,7 +206,7 @@ export const primary = style({
   width: "100%",
   height: "100%",
   display: "flex",
-  justifyItems: "center",
+  justifyContent: "center",
   alignItems: "center",
   gap: "2px 0px"
 })
@@ -195,6 +228,19 @@ export const tertiary = style({
   height: "100%",
 })
 
+export const gameArea = style({
+  gridArea: "secondary",
+  width: "100%",
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyItems: "center",
+  position: "relative",
+  gap: 8,
+  fontSize: 28,
+})
+
 export const gameButton = style({
   backgroundColor: "#8c4ed7",
   fontSize: 24,
@@ -205,68 +251,49 @@ export const gameButton = style({
   ":hover": {
     backgroundColor: "#bb98e5",
     cursor: "pointer",
+  },
+  "@media": {
+    "screen and (max-width: 768px)": {
+      fontSize: 16,
+    },
   }
 })
-
 export const startButton = style([gameButton, {
   width: "100%",
   maxWidth: "25ch",
   display: "grid",
   gridTemplateAreas: `"img label" "img desc"`,
-  gridTemplateColumns: "auto 1fr",
+  gridTemplateColumns: "32px 1fr",
   alignItems: "center",
   gap: "0px 1ch",
-  paddingLeft: "0.25ch",
+  paddingLeft: 12,
   textAlign: "left"
 }])
 export const startImg = style({
   gridArea: "img",
-  
+  fontSize: 32,
+  textAlign: "center",
+  lineHeight: "1",
 })
 export const startLabel = style({
   gridArea: "label",
   fontSize: "1.5em",
-  lineHeight: "0.9"
+  lineHeight: "0.9",
 })
 export const startDesc = style({
   gridArea: "desc",
   fontSize: ".75em"
 })
 
-export const gameArea = style({
-  gridArea: "secondary",
-  width: "100%",
-  height: "100%",
-  display: "grid",
-  gridTemplateRows: "min-content auto 1fr auto min-content",
-  justifyItems: "center",
-
-})
-export const wordCount = style({
-  fontSize: 12,
-  textAlign: "center",
-  alignSelf: "end",
-})
-export const bigWord = style({
-  fontSize: 32,
-  textAlign: "center",
-  alignSelf: "end",
-  lineHeight: "0.9",
-  paddingBottom: "20px"
-})
-export const controlsContainer = style({
-  display: "flex",
-  gap: 12,
-})
-export const gameControlButton = style([gameButton, {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  width: "8ch",
-}])
 export const timerContainer = style({
   display: "flex",
   fontSize: 32,
-  width: "100%",
-  maxWidth: "50ch",
+  width: "4ch",
+  marginLeft: "auto",
+  alignItems: "center",
+  "@media": {
+    "screen and (min-width: 769px)": {
+      marginRight: "auto",
+    },
+  }
 })

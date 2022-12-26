@@ -5,7 +5,6 @@ export interface Playlist {
   id: string;
   images: PlaylistImage[];
   name: string;
-  owner: SpotifyUser;
   public: boolean;
   snapshot_id: string;
   tracks: Tracklist;
@@ -16,14 +15,6 @@ export interface Playlist {
 export interface Tracklist {
   href: string;
   total: number;
-}
-
-export interface SpotifyUser {
-  display_name: string;
-  href: string;
-  id: string;
-  type: string;
-  uri: string;
 }
 
 export interface PlaylistImage {

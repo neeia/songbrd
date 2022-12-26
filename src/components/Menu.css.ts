@@ -1,8 +1,10 @@
 import { style } from "@vanilla-extract/css";
-import { iconButton, scroller } from "../styles/app.css";
+import { iconButton } from "../styles/app.css";
 
-export const menu = style([scroller, {
+export const menu = style([{
   position: "fixed",
+  display: "grid",
+  alignContent: "start",
   left: 0,
   right: 0,
   top: 0,
@@ -17,7 +19,7 @@ export const menu = style([scroller, {
   border: 0,
   padding: "1rem",
   "@media": {
-    "screen and (min-width: 768px)": {
+    "screen and (min-width: 769px)": {
       maxHeight: "800px",
       maxWidth: "600px",
       boxShadow: "0px 0px 12px 4px #000, 0 0 0 10000vh rgba(0,0,0,.5)",

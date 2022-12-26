@@ -1,29 +1,12 @@
 import { style } from '@vanilla-extract/css';
-import { ellipsisText, iconButton, listButton } from './app.css';
+import { ellipsisText, listButton } from 'styles/app.css';
 
-export const playlistContainer = style({
-  gridArea: "playlist",
-  maxHeight: "100%",
-  width: "40ch",
-  borderBottom: "8px solid #8c4ed7",
-  borderRadius: "0px 0px 8px 0px",
-  position: "relative",
-})
-
-export const playlistTitle = style({
-  backgroundColor: "#8c4ed7",
-  display: "flex",
-  borderRadius: "0px 8px 0px 0px",
-})
 export const textOverflow = style({
   textOverflow: "ellipsis",
   overflow: "hidden",
   whiteSpace: "nowrap",
-  paddingRight: "0.5ch",
+  marginRight: "0.5ch",
 })
-export const refreshButton = style([iconButton, {
-  marginLeft: "auto",
-}])
 export const playlistButton = style([listButton, {
   display: "grid",
   gridTemplateAreas: `"img name name" "img desc count"`,
