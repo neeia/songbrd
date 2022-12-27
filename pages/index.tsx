@@ -164,15 +164,17 @@ const App: NextPage = () => {
       if (data.next) s = data.next;
     } while (data.next);
 
-    const out: Record<string, Lyrics> = {};
-
     setTracks(items);
-    await Promise.all(items.map(async (track: Track) => {
-      const res = await getSong(track);
-      if (res) out[convertTrackToId(track)] = { song: track, words: res.lyrics };
-      else setFailedSongs(fs => [...fs, track]);
-    }));
-    setWords(out);
+    items.forEach((track: Track) => {
+      getSong(track).then(res => {
+        if (res) setWords(oldWords => {
+          const newWords = { ...oldWords };
+          newWords[convertTrackToId(track)] = { song: track, words: res.lyrics };
+          return newWords;
+        })
+        else setFailedSongs(fs => [...fs, track]);
+      })
+    });
   }
 
   const getSong = async (s: Track) => {
