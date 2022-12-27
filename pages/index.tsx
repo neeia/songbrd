@@ -12,7 +12,7 @@ import {
 } from "styles/app.css";
 import { convertTrackToId } from "util/track";
 import Head from "next/head";
-import { BiRefresh, BiChevronLeft, BiTimer, BiTimeFive, BiInfinite, BiMusic, BiMenu } from "react-icons/bi";
+import { BiRefresh, BiChevronLeft, BiTimer, BiTimeFive, BiInfinite, BiMusic, BiMenu, BiPause, BiPlay } from "react-icons/bi";
 import Title from "components/Title";
 import ControlPane from "components/ControlPane";
 import useWindowSize from "util/useWindowSize";
@@ -278,6 +278,7 @@ const App: NextPage = () => {
   // GAME LOOP
   useEffect(() => {
     const interval = setTimeout(() => {
+      if (game.paused) return;
       if (game.state !== GameState.GUESSING && game.state !== GameState.ANSWERS) return;
       const cl = { ...game };
       if (game.mode === Mode.REHEARSAL) return;
@@ -436,30 +437,34 @@ const App: NextPage = () => {
                   <button onClick={() => getPlaylists(user.name, token)} className={refreshButton}>
                     <BiRefresh size="24px" />
                   </button>
-                  <button onClick={() => console.log("open the menu!")} className={menuButton}>
-                    <BiMenu size="24px" />
-                  </button>
+                  {timer >= 0 &&
+                    <button onClick={() => setGame(g => { return { ...g, paused: !g.paused } })} className={menuButton}>
+                      {game.paused
+                        ? <BiPlay size="24px" />
+                        : <BiPause size="24px" />}
+                    </button>
+                  }
                 </div>
                 <PlaylistList playlists={playlists} onClick={(p) => { setSelectedPlaylist(p); getSongs(p.tracks.href); }} />
               </>
               // Playlist has been selected
               : <>
                 <SongList
-                name={selectedPlaylist.name}
-                tracks={tracks.filter(track => !!words[convertTrackToId(track)])}
-                onExit={() => {
-                  controller.abort();
-                  setSelectedPlaylist(undefined);
-                  setTracks([]);
-                  setFailedSongs([]);
-                  setGame(DEFAULT_STATE);
-                }}
+                  name={selectedPlaylist.name}
+                  tracks={tracks.filter(track => !!words[convertTrackToId(track)])}
+                  onExit={() => {
+                    controller.abort();
+                    setSelectedPlaylist(undefined);
+                    setTracks([]);
+                    setFailedSongs([]);
+                    setGame(DEFAULT_STATE);
+                  }}
                 />
                 <ProgressBar
                   max={tracks.length}
                   value={Object.keys(words).length + failedSongs.length}
                 />
-                </>
+              </>
             }
           </section>
           {selectedPlaylist && <>
