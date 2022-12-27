@@ -462,50 +462,47 @@ const App: NextPage = () => {
         </>}
       </div>
       : // Mobile Version
-      <>
-        {!(user.verified && playlists)
-          ? // Login
-          <>
-            <section className={titleContainer}>
-              <h1><Title /></h1>
-            </section>
-            <section>
-              <SpotifyLogin onSubmit={(name: string) => setUser({ name, verified: false })} error={loginError} />
-              <ControlPane settings={settings} setSettings={setSettings} />
-            </section>
-          </>
-          : // Game
-          <section className={mobileLayout}>
-            <div className={mobileAppBar}>
-              <button className={iconButton} onClick={handleBack}>
-                <BiChevronLeft size="24px" />
-              </button>
-              <MobileHeader />
-              <button onClick={() => console.log("open the menu!")} className={menuButton}>
-                <BiMenu size="24px" />
-              </button>
-            </div>
-            <section className={mobileContainer}>
-              {!selectedPlaylist || !tracks
-                // Playlist has not yet been selected
-                ? <PlaylistList playlists={playlists} onClick={(p) => { setSelectedPlaylist(p); getSongs(p.tracks.href); }} />
-                // Playlist has been selected
-                : game.mode === Mode.NONE
-                  // Not in game
-                  ? <>
-                    <GameModeSelector />
-                    <h3>Tracks:</h3>
-                    <div className={listContainer}>
-                      {tracks.map((t, i) => <Song track={t} key={i} />)}
-                    </div>
-                  </>
-                  // In a game
-                  : <>{gameObj}</>
-              }
-            </section>
+      !(user.verified && playlists)
+        ? // Login
+        <div className={loginLayout}>
+          <section className={titleContainer}>
+            <h1><Title /></h1>
           </section>
-        }
-      </>
+          <section>
+            <SpotifyLogin onSubmit={(name: string) => setUser({ name, verified: false })} error={loginError} />
+            <ControlPane settings={settings} setSettings={setSettings} />
+          </section>
+        </div>
+        : // Game
+        <section className={mobileLayout}>
+          <div className={mobileAppBar}>
+            <button className={iconButton} onClick={handleBack}>
+              <BiChevronLeft size="24px" />
+            </button>
+            <MobileHeader />
+            <button onClick={() => console.log("open the menu!")} className={menuButton}>
+              <BiMenu size="24px" />
+            </button>
+          </div>
+          <section className={mobileContainer}>
+            {!selectedPlaylist || !tracks
+              // Playlist has not yet been selected
+              ? <PlaylistList playlists={playlists} onClick={(p) => { setSelectedPlaylist(p); getSongs(p.tracks.href); }} />
+              // Playlist has been selected
+              : game.mode === Mode.NONE
+                // Not in game
+                ? <>
+                  <GameModeSelector />
+                  <h3>Tracks:</h3>
+                  <div className={listContainer}>
+                    {tracks.map((t, i) => <Song track={t} key={i} />)}
+                  </div>
+                </>
+                // In a game
+                : <>{gameObj}</>
+            }
+          </section>
+        </section>
     }
   </div>
 }
