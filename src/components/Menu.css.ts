@@ -14,7 +14,6 @@ export const menu = style([{
   width: "100vw",
   height: "100vh",
   zIndex: 1000,
-  backgroundColor: "#121212",
   boxShadow: "0px 0px 12px 4px #000",
   border: 0,
   padding: "1rem",

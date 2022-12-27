@@ -412,7 +412,6 @@ const App: NextPage = () => {
         property="og:description"
         content="Generate random words from the lyrics of songs in a Spotify playlist"
       />
-      <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     </Head>
     {!mobile
       ? //Desktop Version
