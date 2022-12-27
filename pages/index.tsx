@@ -397,6 +397,22 @@ const App: NextPage = () => {
       <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
       <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
       <link rel="manifest" href="/manifest.json" />
+      <meta
+        key="url"
+        property="og:url"
+        content="https://www.songbrd.app/"
+      />
+      <meta
+        key="title"
+        property="og:title"
+        content="Songbird" />
+      <meta
+        key="description"
+        name="description"
+        property="og:description"
+        content="Generate random words from the lyrics of songs in a Spotify playlist"
+      />
+      <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     </Head>
     {!mobile
       ? //Desktop Version
