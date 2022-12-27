@@ -25,7 +25,7 @@ const Menu = (props: Props) => {
   return <FocusTrap active={open} focusTrapOptions={{ fallbackFocus: "#modal" }}>
     <dialog className={open ? showMenu : hideMenu} open data-open={open} id="modal" tabIndex={-1}>
       <div className={menuHeader}>
-        <h2>{title}</h2>
+        <h3>{title}</h3>
         <button onClick={onClose} className={closeButton}>
           <BiX fontSize="36px" />
         </button>
