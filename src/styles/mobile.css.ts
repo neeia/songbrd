@@ -17,5 +17,5 @@ export const mobileContainer = style({
   flexDirection: "column",
   alignItems: "center",
   gap: 8,
-  fontSize: "2em",
+  fontSize: "1.25em",
 })
