@@ -1,6 +1,6 @@
 import { listContainer } from "styles/app.css";
 import { Playlist } from "types/playlist";
-import { playlistButton, playlistCount, playlistDesc, playlistImage, playlistName } from "./playlist.css";
+import { playlistButton, playlistCount, playlistDesc, playlistImage, playlistName } from "./Playlist.css";
 
 interface Props {
   playlists: Playlist[]
