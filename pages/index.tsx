@@ -25,6 +25,7 @@ import Game from "components/game/Game";
 import PlaylistList from "components/menu/PlaylistList";
 import { textOverflow } from "components/menu/Playlist.css";
 import SpotifyLoggedIn from "components/app/SpotifyLoggedIn";
+import ProgressBar from "../src/components/game/ProgressBar";
 
 export const CLIENT_ID = "a70d66f34db04d7e86f52acc1615ec37"
 export const REDIRECT_URI = `${server}/`
@@ -93,7 +94,7 @@ enum AppState {
 }
 
 const App: NextPage = () => {
-  const [controller] = useState(new AbortController());
+  const [controller, setController] = useState(new AbortController());
 
   // song => word => frequency
   const [words, setWords] = useState<Record<string, Lyrics>>({});
@@ -143,6 +144,8 @@ const App: NextPage = () => {
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const getSongs = async (s: string) => {
+    const ctrl = new AbortController();
+    setController(ctrl)
     setWords({});
     setTracks([]);
     setFailedSongs([]);
@@ -166,7 +169,7 @@ const App: NextPage = () => {
 
     setTracks(items);
     items.forEach((track: Track) => {
-      getSong(track).then(res => {
+      getSong(track, ctrl).then(res => {
         if (res) setWords(oldWords => {
           const newWords = { ...oldWords };
           newWords[convertTrackToId(track)] = { song: track, words: res.lyrics };
@@ -177,9 +180,9 @@ const App: NextPage = () => {
     });
   }
 
-  const getSong = async (s: Track) => {
+  const getSong = async (s: Track, ctrl: AbortController) => {
     const response = await fetch(`${server}/api/fetchLyrics?${new URLSearchParams({ name: s.name, artist: s.artists[0].name })}`, {
-      signal: controller.signal,
+      signal: ctrl.signal,
     });
 
     if (!response.ok) {
@@ -212,12 +215,15 @@ const App: NextPage = () => {
     answersTime: 5
   });
   const getWord = () => {
-    const words = Object.values(procWords)
+    const wds = Object.values(procWords)
       .filter(word => !(
-        word.word.length < 3 || game.history.find(w => w.word === word)
+        word.word.length < 3
+        || game.history.find(w => w.word === word)
+        || (tracks.length > 20 && word.songs.length < 3)
+        || (tracks.length > 20 && word.songs.length > tracks.length / 3)
       ));
 
-    return words[words.length * Math.random() | 0];
+    return wds[wds.length * Math.random() | 0];
   }
   const initGame = (gameMode: Mode) => {
     const cl = { ...game };
@@ -422,7 +428,8 @@ const App: NextPage = () => {
                 <PlaylistList playlists={playlists} onClick={(p) => { setSelectedPlaylist(p); getSongs(p.tracks.href); }} />
               </>
               // Playlist has been selected
-              : <SongList
+              : <>
+                <SongList
                 name={selectedPlaylist.name}
                 tracks={tracks.filter(track => !!words[convertTrackToId(track)])}
                 onExit={() => {
@@ -432,7 +439,12 @@ const App: NextPage = () => {
                   setFailedSongs([]);
                   setGame(DEFAULT_STATE);
                 }}
-              />
+                />
+                <ProgressBar
+                  max={tracks.length}
+                  value={Object.keys(words).length + failedSongs.length}
+                />
+                </>
             }
           </section>
           {selectedPlaylist && <>
@@ -496,6 +508,10 @@ const App: NextPage = () => {
                   <h3>Tracks:</h3>
                   <div className={listContainer}>
                     {tracks.map((t, i) => <Song track={t} key={i} />)}
+                    <ProgressBar
+                      max={tracks.length}
+                      value={Object.keys(words).length + failedSongs.length}
+                    />
                   </div>
                 </>
                 // In a game
