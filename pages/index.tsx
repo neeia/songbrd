@@ -352,6 +352,9 @@ const App: NextPage = () => {
   }
 
   const handleBack = () => {
+    if (state === AppState.PLAYLIST) {
+      window.location.reload();
+    }
     if (state === AppState.GAME) {
       // In Game
       setGame(DEFAULT_STATE)
@@ -474,11 +477,9 @@ const App: NextPage = () => {
           : // Game
           <section className={mobileLayout}>
             <div className={mobileAppBar}>
-              {selectedPlaylist &&
-                <button className={iconButton} onClick={handleBack}>
-                  <BiChevronLeft size="24px" />
-                </button>
-              }
+              <button className={iconButton} onClick={handleBack}>
+                <BiChevronLeft size="24px" />
+              </button>
               <MobileHeader />
               <button onClick={() => console.log("open the menu!")} className={menuButton}>
                 <BiMenu size="24px" />

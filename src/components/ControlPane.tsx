@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { BiCodeAlt, BiCog, BiHelpCircle } from "react-icons/bi";
-import { iconButton, settingsContainer, textBox } from "styles/app.css";
+import { BiCodeAlt, BiHelpCircle } from "react-icons/bi";
+import { iconButton, settingsContainer } from "styles/app.css";
 import { GameSettings } from "types/game";
 import Menu from "./Menu";
 
@@ -9,10 +9,7 @@ interface Props {
   setSettings: (settings: GameSettings) => void;
 }
 const ControlPane = (props: Props) => {
-  const { settings: gameSettings, setSettings } = props;
 
-  const [settings, openSettings] = useState(false);
-  const closeSettings = () => openSettings(false);
   const [help, openHelp] = useState(false);
   const closeHelp = () => openHelp(false);
 
@@ -57,31 +54,6 @@ const ControlPane = (props: Props) => {
         number of songs that word appears in, in order to carefully control the difficulty.
         These settings are adjustable in the settings menu.
       </p>
-    </Menu>
-    <button className={iconButton} onClick={() => openSettings(true)}>
-      <BiCog size="32px" />
-    </button>
-    <Menu open={settings} onClose={closeSettings} title="Settings">
-      Dark Theme
-      <button className={iconButton}>
-      </button>
-      Feedback
-      Version
-      <section>
-        <h3>Game Modes</h3>
-        <h4>Standard</h4>
-        <label>
-          Word Count <input type="number" className={textBox} />
-        </label>
-        <label>
-          Timer <input type="number" className={textBox} />
-        </label>
-        <h4>Blitz</h4>
-        <label>
-          Timer <input type="number" className={textBox} />
-        </label>
-        <h4>Rehearsal</h4>
-      </section>
     </Menu>
     <a className={iconButton} href="https://github.com/neeia/songbrd" target="_blank" rel="noopener noreferrer">
       <BiCodeAlt size="32px" />
