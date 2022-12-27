@@ -23,7 +23,7 @@ import { mobileAppBar, mobileLayout, mobileContainer } from "styles/mobile.css";
 import { DEFAULT_STATE, GameSettings, GameState, Lyrics, Mode, State, WordData } from "types/game";
 import Game from "components/game/Game";
 import PlaylistList from "components/menu/PlaylistList";
-import { textOverflow } from "components/menu/playlist.css";
+import { textOverflow } from "components/menu/Playlist.css";
 import SpotifyLoggedIn from "components/app/SpotifyLoggedIn";
 
 export const CLIENT_ID = "a70d66f34db04d7e86f52acc1615ec37"
@@ -273,7 +273,7 @@ const App: NextPage = () => {
       if (game.state !== GameState.GUESSING && game.state !== GameState.ANSWERS) return;
       const cl = { ...game };
       if (game.mode === Mode.REHEARSAL) return;
-      setTimer(timer - 1);
+      setTimer(t => t - 1);
       setGame(cl);
       if (timer === 0) {
         switch (cl.mode) {
@@ -289,14 +289,12 @@ const App: NextPage = () => {
     }, 1000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist>();
   const size = useWindowSize();
   const mobile = size.width && size.width <= 768;
-
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const GameTimer = () =>
     <div className={timerContainer}>

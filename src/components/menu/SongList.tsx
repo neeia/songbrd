@@ -2,7 +2,7 @@ import { iconButton, listContainer, playlistTitle } from "styles/app.css";
 import { BiChevronLeft } from "react-icons/bi";
 import { Track } from "types/playlist";
 import Song from "./Song";
-import { textOverflow } from "./playlist.css";
+import { textOverflow } from "./Playlist.css";
 
 interface Props {
   name: string;
