@@ -14,15 +14,13 @@ a {
     box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-    html {
-        color-scheme: dark;
-    }
+html {
+    color-scheme: dark;
+}
 
-    body {
-        color: white;
-        background: #121212;
-    }
+body {
+    color: white;
+    background: #121212;
 }
 
 h1, h2, h3, h4, h5, h6 {
