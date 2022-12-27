@@ -3,6 +3,7 @@ import { HistoryEntry } from "types/game";
 import { useState } from "react";
 import Menu from "../Menu";
 import Song from "../menu/Song";
+import { failureWord, successWord } from "./Review.css";
 
 interface Props {
   history: HistoryEntry[];
@@ -14,7 +15,7 @@ const Review = (props: Props) => {
 
   return <div className={inlineContainer}>
     {history.map((w, i) =>
-      <button key={i} className={inlineButton} onClick={() => { setWord(w); setOpen(true); }}>
+      <button key={i} className={`${inlineButton} ${w.solved ? successWord : failureWord}`} onClick={() => { setWord(w); setOpen(true); }}>
         {w.word.word}
       </button>
     )}
