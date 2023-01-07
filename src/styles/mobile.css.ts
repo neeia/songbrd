@@ -8,6 +8,9 @@ export const mobileLayout = style({
 export const mobileAppBar = style({
   backgroundColor: "#8c4ed7",
   display: "flex",
+  alignItems: "center",
+  padding: "4px 0px",
+  transition: "background-color 1000ms linear"
 })
 
 export const mobileContainer = style({

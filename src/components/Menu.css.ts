@@ -17,11 +17,13 @@ export const menu = style([{
   boxShadow: "0px 0px 12px 4px #000",
   border: 0,
   padding: "1rem",
+  backgroundColor: "#121212",
+  color: "#fff",
   "@media": {
     "screen and (min-width: 769px)": {
       maxHeight: "800px",
       maxWidth: "600px",
-      boxShadow: "0px 0px 12px 4px #000, 0 0 0 10000vh rgba(0,0,0,.5)",
+      boxShadow: "0px 0px 12px -4px #000, 0 0 0 10000vh rgba(0,0,0,.5)",
     },
   },
   selectors: {

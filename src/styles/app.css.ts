@@ -1,8 +1,8 @@
 import { style } from "@vanilla-extract/css";
 
 const main = style({
-  width: "100vw",
-  height: "100vh",
+  width: "100dvw",
+  height: "100svh",
   boxSizing: "border-box",
   marginLeft: "auto",
   marginRight: "auto",
@@ -248,14 +248,20 @@ export const gameButton = style({
   padding: 8,
   borderRadius: 6,
   height: "min-content",
-  ":hover": {
-    backgroundColor: "#bb98e5",
-    cursor: "pointer",
-  },
   "@media": {
     "screen and (max-width: 768px)": {
       fontSize: 16,
     },
+  },
+  selectors: {
+    "&:hover:enabled": {
+      backgroundColor: "#bb98e5",
+      cursor: "pointer",
+    },
+    "&:disabled": {
+      filter: "brightness(0.5)",
+      cursor: "unset"
+    }
   }
 })
 export const startButton = style([gameButton, {
@@ -279,6 +285,7 @@ export const startLabel = style({
   gridArea: "label",
   fontSize: "1.5em",
   lineHeight: "0.9",
+  pointerEvents: "none"
 })
 export const startDesc = style({
   gridArea: "desc",

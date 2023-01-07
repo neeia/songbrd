@@ -5,19 +5,26 @@ import { iconButton, mobileHidden, startButton, startDesc, startImg, startLabel 
 import Song from "../menu/Song";
 import GameOver from "./GameOver";
 import Review from "./Review";
+import Autocomplete from "../Autocomplete";
+import { Track } from "types/playlist";
+import { useState } from "react";
 
 interface Props {
   game: State;
   settings: GameSettings;
+  tracks: Track[];
   skipWord: () => void;
   getWord: () => void;
+  guess: (track: Track) => void;
   endGame: () => void;
   exit: () => void;
   restart: () => void;
   review: () => void;
 }
 const Game = (props: Props) => {
-  const { game, settings, skipWord, getWord, endGame, exit, restart, review } = props;
+  const { game, settings, tracks, skipWord, getWord, guess, endGame, exit, restart, review } = props;
+
+  const [track, setTrack] = useState<Track | undefined>();
 
   switch (game.state) {
     case GameState.GUESSING:
@@ -32,20 +39,31 @@ const Game = (props: Props) => {
             {game.activeWord.word.toLocaleUpperCase()}
           </div>
         </div>
+        {game.typing && <div>
+          <Autocomplete key={game.activeWord.word}
+            track={track}
+            setTrack={setTrack}
+            tracks={tracks.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))}
+          />
+        </div>}
         <div className={controlsContainer}>
           <button className={gameControlButton} onClick={skipWord}>
             <BiSkipNext size="48px" />
             Skip
           </button>
-          <button className={gameControlButton} disabled={game.state === GameState.ANSWERS} onClick={getWord}>
+          <button
+            className={gameControlButton}
+            disabled={game.state === GameState.ANSWERS || (game.typing && !track)}
+            onClick={ game.typing ? () => guess(track!) : getWord }
+          >
             <BiMicrophone size="48px" />
-            Done
+            {game.typing ? "Submit" : "Done"}
           </button>
-          {game.mode === Mode.REHEARSAL && 
+          {game.mode === Mode.REHEARSAL &&
             <button className={gameControlButton} disabled={game.state === GameState.ANSWERS} onClick={endGame}>
-            <BiExit size="48px" />
-            End
-          </button>
+              <BiExit size="48px" />
+              End
+            </button>
           }
         </div>
         {game.state === GameState.ANSWERS

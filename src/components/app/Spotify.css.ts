@@ -25,6 +25,7 @@ export const usernameSearchBox = style([textBox, {
 }])
 export const errorText = style({
   color: "rgb(255, 40, 40)",
+  textAlign: "center",
 })
 
 export const spotifyContainer = style({

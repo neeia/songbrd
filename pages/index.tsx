@@ -6,13 +6,12 @@ import { server } from "config/index";
 import {
   layout, titleContainer, iconButton,
   loginLayout, loggedInTitleContainer,
-  listContainer, primary, secondary, timerContainer,
-  startButton, startImg, startLabel, startDesc, menuButton,
+  listContainer, primary, secondary, timerContainer, menuButton,
   playlistContainer, playlistTitle, refreshButton, gameArea, utilContainer
 } from "styles/app.css";
 import { convertTrackToId } from "util/track";
 import Head from "next/head";
-import { BiRefresh, BiChevronLeft, BiTimer, BiTimeFive, BiInfinite, BiMusic, BiMenu, BiPause, BiPlay } from "react-icons/bi";
+import { BiRefresh, BiChevronLeft, BiTimer, BiMenu, BiPause, BiPlay } from "react-icons/bi";
 import Title from "components/Title";
 import ControlPane from "components/ControlPane";
 import useWindowSize from "util/useWindowSize";
@@ -26,6 +25,7 @@ import PlaylistList from "components/menu/PlaylistList";
 import { textOverflow } from "components/menu/Playlist.css";
 import SpotifyLoggedIn from "components/app/SpotifyLoggedIn";
 import ProgressBar from "../src/components/game/ProgressBar";
+import GameModeSelector from "../src/components/game/GameModeSelector";
 
 export const CLIENT_ID = "a70d66f34db04d7e86f52acc1615ec37"
 export const REDIRECT_URI = `${server}/`
@@ -311,25 +311,6 @@ const App: NextPage = () => {
       {timer}
     </div>
 
-  const GameModeSelector = () => <>
-    <h3>Modes:</h3>
-    <button className={startButton} disabled={Object.keys(procWords).length === 0} onClick={() => initGame(Mode.STANDARD)}>
-      <BiMusic size="36px" className={startImg} />
-      <label className={startLabel}>Standard</label>
-      <div className={startDesc}>Test your knowledge!</div>
-    </button>
-    <button className={startButton} disabled={Object.keys(procWords).length === 0} onClick={() => initGame(Mode.BLITZ)}>
-      <BiTimeFive size="36px" className={startImg} />
-      <label className={startLabel}>Blitz</label>
-      <div className={startDesc}>Race against the clock!</div>
-    </button>
-    <button className={startButton} disabled={Object.keys(procWords).length === 0} onClick={() => initGame(Mode.REHEARSAL)}>
-      <BiInfinite size="36px" className={startImg} />
-      <label className={startLabel}>Rehearsal</label>
-      <div className={startDesc}>Hone your skills!</div>
-    </button>
-  </>
-
   const MobileHeader = () => {
     switch (state) {
       case AppState.PLAYLIST:
@@ -377,8 +358,10 @@ const App: NextPage = () => {
   }
 
   const gameObj = <Game game={game}
+    tracks={tracks}
     settings={settings}
     getWord={() => getNextWord(true)}
+    guess={(track: Track) => game.activeWord.songs.includes(track) ? getNextWord(true) : showAnswers()}
     skipWord={showAnswers}
     endGame={endGame}
     exit={() => {
@@ -483,7 +466,12 @@ const App: NextPage = () => {
             </section>
             {game.mode === Mode.NONE
               ? <section className={secondary}>
-                <GameModeSelector />
+                <GameModeSelector
+                  disabled={Object.keys(procWords).length === 0}
+                  initGame={initGame}
+                  typeGuess={game.typing}
+                  setTypeGuess={(b: boolean) => setGame(g => { return { ...g, typing: b } })}
+                />
               </section>
               : <div className={gameArea}>
                 {gameObj}
@@ -524,7 +512,12 @@ const App: NextPage = () => {
               : game.mode === Mode.NONE
                 // Not in game
                 ? <>
-                  <GameModeSelector />
+                  <GameModeSelector
+                    disabled={Object.keys(procWords).length === 0}
+                    initGame={initGame}
+                    typeGuess={game.typing}
+                    setTypeGuess={(b: boolean) => setGame(g => { return { ...g, typing: b } })}
+                  />
                   <h3>Tracks:</h3>
                   <div className={listContainer}>
                     {tracks.map((t, i) => <Song track={t} key={i} />)}

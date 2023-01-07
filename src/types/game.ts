@@ -43,6 +43,7 @@ export interface State {
   state: GameState;
   activeWord: WordData;
   history: HistoryEntry[];
+  typing: boolean;
   paused: boolean;
 }
 export const DEFAULT_STATE = (): State => {
@@ -51,6 +52,7 @@ export const DEFAULT_STATE = (): State => {
     mode: Mode.NONE,
     history: [],
     activeWord: { word: "", frequency: 0, songs: [] },
+    typing: false,
     paused: false,
   }
 }
