@@ -44,6 +44,7 @@ const Game = (props: Props) => {
             track={track}
             setTrack={setTrack}
             tracks={tracks.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))}
+            disabled={game.state !== GameState.GUESSING}
           />
         </div>}
         <div className={controlsContainer}>

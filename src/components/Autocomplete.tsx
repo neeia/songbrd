@@ -7,9 +7,10 @@ interface Props {
   track?: Track;
   setTrack: (track: Track | undefined) => void;
   tracks: Track[];
+  disabled?: boolean;
 }
 const Autocomplete = (props: Props) => {
-  const { track, setTrack, tracks } = props;
+  const { track, setTrack, tracks, disabled } = props;
 
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -29,6 +30,7 @@ const Autocomplete = (props: Props) => {
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
+        disabled={disabled}
       />
       <div id="autocomplete-list" className={open ? autocompleteItemContainer : hiddenItemContainer}>
         {tracks.map((track, i) => {
