@@ -3,6 +3,7 @@ import { BiChevronLeft } from "react-icons/bi";
 import { Track } from "types/playlist";
 import Song from "./Song";
 import { textOverflow } from "./Playlist.css";
+import { convertTrackToId } from "../../util/track";
 
 interface Props {
   name: string;
@@ -20,7 +21,7 @@ const SongList = (props: Props) => {
       <h2 className={textOverflow}>{name}</h2>
     </div>
     <div className={listContainer}>
-      {tracks.map((t, i) => <Song track={t} key={i} />)}
+      {tracks.map(t => <Song track={t} key={convertTrackToId(t)} />)}
     </div>
   </>
 }
