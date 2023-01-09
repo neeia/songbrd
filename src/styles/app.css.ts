@@ -134,7 +134,6 @@ export const playlistContainer = style({
   borderRadius: "0px 0px 8px 0px",
   display: "grid",
   gridTemplateRows: "40px 1fr",
-  gridTemplateColumns: "100%",
   width: "100%",
   "@media": {
     "screen and (min-width: 769px)": {
