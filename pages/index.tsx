@@ -77,13 +77,17 @@ const getPlaylists = async (username: string, token: string) => {
 const processWords = (words: Record<string, Lyrics>) => {
   const out: Record<string, WordData> = {};
   Object.values(words).forEach(lyrics => {
-    Object.keys(lyrics.words).forEach(word => {
+    Object.entries(lyrics.words).forEach(([word, count]) => {
       out[word] ??= { word, frequency: 0, songs: [] };
-      out[word].frequency += 1;
+      out[word].frequency += count;
       out[word].songs.push(lyrics.song);
     })
   })
   return out;
+}
+
+function minMax(min: number, value: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
 enum AppState {
@@ -99,11 +103,18 @@ const App: NextPage = () => {
   // song => word => frequency
   const [words, setWords] = useState<Record<string, Lyrics>>({});
 
-  // target: word => frequency, 
+  // word => frequency, song list
   const [procWords, setProcWords] = useState<Record<string, WordData>>({});
   useEffect(() => {
     const out = processWords(words)
-    setProcWords(out);
+    const newProcWords = Object.fromEntries(Object.values(out)
+      .filter(word => !(
+        word.word.length < 3
+        || (tracks.length > 20 && word.songs.length < minMax(3, tracks.length / 50, 8))
+      ))
+      .map(w => [w.word, w]
+      ));
+    setProcWords(newProcWords)
   }, [words])
 
   const [failedSongs, setFailedSongs] = useState<Track[]>([]);
@@ -216,13 +227,7 @@ const App: NextPage = () => {
   });
   const getWord = () => {
     const wds = Object.values(procWords)
-      .filter(word => !(
-        word.word.length < 3
-        || game.history.find(w => w.word === word)
-        || (tracks.length > 20 && word.songs.length < 3)
-        || (tracks.length > 20 && word.songs.length > tracks.length / 3)
-      ));
-
+      .filter(word => !game.history.find(w => w.word === word));
     return wds[wds.length * Math.random() | 0];
   }
   const initGame = (gameMode: Mode) => {
@@ -373,6 +378,18 @@ const App: NextPage = () => {
     }}
     restart={() => initGame(game.mode)}
   />
+
+  // for debug purposes
+  const dlButton = <a download="songwords.json" href={`data:text/json;charset=utf-8,${encodeURIComponent(
+    JSON.stringify(Object.fromEntries(Object.entries(procWords).map(([word, data]) => {
+      return [word, [
+        data.frequency,
+        data.songs.length
+      ]]
+    })), null, "\t")
+  )}`}>
+    Download
+  </a>
 
   return <div>
     <Head>
