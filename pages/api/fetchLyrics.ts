@@ -35,7 +35,7 @@ export default async function fetchLyrics(
   res: NextApiResponse<Data>
 ) {
   if (!getApps().length) initializeApp(firebaseConfig);
-  let app = getApp();
+  const app = getApp();
   const db = getFirestore(app);
   const today = new Date().toISOString().slice(0, 10)
   try {
