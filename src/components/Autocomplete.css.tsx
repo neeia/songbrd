@@ -38,6 +38,7 @@ export const autocompleteItemContainer = style({
 })
 export const hiddenItemContainer = style([autocompleteItemContainer, {
   maxHeight: 0,
+  pointerEvents: "none",
 }])
 
 export const autocompleteItem = style({
@@ -66,7 +67,14 @@ export const autocompleteItem = style({
 export const songName = style({
   maxHeight: 44,
   overflow: "hidden",
+  color: "whitesmoke",
+})
+export const strong = style({
+  color: "white"
 })
 export const hidden = style({
   display: "none",
+})
+export const focus = style({
+  backgroundColor: "darkgrey"
 })
