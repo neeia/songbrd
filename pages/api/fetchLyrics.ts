@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import axios from 'axios';
-import cheerio, { CheerioAPI } from 'cheerio';
+import { CheerioAPI, load } from 'cheerio';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 
@@ -165,7 +165,7 @@ export default async function fetchLyrics(
     })
 
     const html = targetSongData.data;
-    const $ = cheerio.load(html);
+    const $ = load(html);
     const words: Record<string, number> = {};
 
     // Select the song's container
