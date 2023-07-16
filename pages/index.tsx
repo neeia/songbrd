@@ -24,8 +24,8 @@ import Game from "components/game/Game";
 import PlaylistList from "components/menu/PlaylistList";
 import { textOverflow } from "components/menu/Playlist.css";
 import SpotifyLoggedIn from "components/app/SpotifyLoggedIn";
-import ProgressBar from "../src/components/game/ProgressBar";
-import GameModeSelector from "../src/components/game/GameModeSelector";
+import ProgressBar from "components/game/ProgressBar";
+import GameModeSelector from "components/game/GameModeSelector";
 
 export const CLIENT_ID = "a70d66f34db04d7e86f52acc1615ec37"
 export const REDIRECT_URI = `${server}/`
