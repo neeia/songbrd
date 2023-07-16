@@ -1,8 +1,7 @@
 import FocusTrap from "focus-trap-react";
-import { useEffect } from "react";
 import { BiX } from "react-icons/bi";
 import { scroller } from "../styles/app.css";
-import { closeButton, hideMenu, menu, menuHeader, showMenu } from "./Menu.css";
+import { closeButton, hideMenu, menuHeader, showMenu } from "./Menu.css";
 
 interface Props {
   open: boolean;
@@ -12,18 +11,14 @@ interface Props {
 }
 const Menu = (props: Props) => {
   const { open, onClose, title, children } = props;
-
-  useEffect(() => {
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const checkEsc = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      onClose();
+    }
+  }
 
   return <FocusTrap active={open} focusTrapOptions={{ fallbackFocus: "#modal" }}>
-    <dialog className={open ? showMenu : hideMenu} open data-open={open} id="modal" tabIndex={-1}>
+    <dialog className={open ? showMenu : hideMenu} open data-open={open} id="modal" tabIndex={-1} onKeyDown={checkEsc}>
       <div className={menuHeader}>
         <h3>{title}</h3>
         <button onClick={onClose} className={closeButton}>
